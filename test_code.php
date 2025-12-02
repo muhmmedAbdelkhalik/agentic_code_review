@@ -124,3 +124,33 @@ class ProductController
     }
 }
 // Auto-test timestamp: 2025-12-02 19:51:38
+
+class InvoiceController
+{
+    public function generateInvoices()
+    {
+        // Issue 1: N+1 Query
+        $invoices = Invoice::all();
+        
+        foreach ($invoices as $invoice) {
+            echo $invoice->customer->name;    // N+1!
+            echo $invoice->items->sum('total'); // N+1!
+        }
+    }
+    
+    public function updateInvoice(Request $request, $id)
+    {
+        // Issue 2: Mass Assignment Vulnerability
+        $invoice = Invoice::find($id);
+        $invoice->update($request->all());  // Security issue!
+        
+        return response()->json($invoice);
+    }
+    
+    public function get_invoice_total($id)  // Issue 3: snake_case method
+    {
+        // Issue 4: No null check
+        $invoice = Invoice::find($id);
+        return $invoice->total;  // Will crash if null!
+    }
+}
