@@ -33,3 +33,11 @@ class UserController
 }
 
 // Testing Git hook
+
+// Additional test comment - testing Git hook
+function testGitHook() {
+    $users = User::all();
+    foreach ($users as $user) {
+        echo $user->profile->name; // Another potential N+1
+    }
+}
