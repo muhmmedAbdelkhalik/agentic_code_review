@@ -53,8 +53,38 @@ fi
 echo -e "${CYAN}🤖 Running LocalAI Code Review Agent...${NC}"
 echo ""
 
-# Run the review agent
-if python3 review_local.py; then
+# Determine commit range from git hook stdin (if available)
+# Git pre-push hook provides: <local_ref> <local_sha1> <remote_ref> <remote_sha1>
+COMMIT_RANGE=""
+if [ -t 0 ]; then
+    # No stdin (running manually), review uncommitted changes
+    COMMIT_RANGE=""
+else
+    # Read from stdin to get commit range
+    while read local_ref local_sha remote_ref remote_sha; do
+        if [ -n "$local_sha" ] && [ -n "$remote_sha" ] && [ "$local_sha" != "0000000000000000000000000000000000000000" ]; then
+            # Review commits being pushed
+            if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+                # New branch, review all commits
+                COMMIT_RANGE="$remote_sha..$local_sha"
+            else
+                # Review commits between remote and local
+                COMMIT_RANGE="$remote_sha..$local_sha"
+            fi
+            break
+        fi
+    done
+fi
+
+# Run the review agent with commit range if available
+if [ -n "$COMMIT_RANGE" ]; then
+    echo -e "${CYAN}📝 Reviewing commits: $COMMIT_RANGE${NC}"
+    REVIEW_CMD="python3 review_local.py --commit-range $COMMIT_RANGE"
+else
+    REVIEW_CMD="python3 review_local.py"
+fi
+
+if eval "$REVIEW_CMD"; then
     echo ""
     echo -e "${GREEN}✅ Code review completed successfully${NC}"
     
@@ -73,12 +103,25 @@ if python3 review_local.py; then
         fi
         
         if [ "$BLOCK_ENABLED" = "true" ]; then
+            # Count critical and high severity issues (high can also be blocking)
             CRITICAL_COUNT=$(python3 -c "import json; issues = json.load(open('.local_review.json'))['issues']; print(len([i for i in issues if i.get('severity') == 'critical']))" 2>/dev/null || echo "0")
+            HIGH_COUNT=$(python3 -c "import json; issues = json.load(open('.local_review.json'))['issues']; print(len([i for i in issues if i.get('severity') == 'high']))" 2>/dev/null || echo "0")
+            TOTAL_BLOCKING=$((CRITICAL_COUNT + HIGH_COUNT))
             
-            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            if [ "$TOTAL_BLOCKING" -gt 0 ]; then
                 echo ""
-                echo -e "${RED}🚫 BLOCKING PUSH: $CRITICAL_COUNT critical issue(s) found${NC}"
-                echo -e "${RED}   Fix critical issues or skip review with: SKIP_REVIEW=1 git push${NC}"
+                echo -e "${RED}🚫 BLOCKING PUSH: $CRITICAL_COUNT critical + $HIGH_COUNT high severity issue(s) found${NC}"
+                echo -e "${RED}   Fix these issues or skip review with: SKIP_REVIEW=1 git push${NC}"
+                echo ""
+                echo -e "${YELLOW}Issues found:${NC}"
+                python3 -c "
+import json
+data = json.load(open('.local_review.json'))
+for issue in data.get('issues', []):
+    if issue.get('severity') in ['critical', 'high']:
+        print(f\"  • {issue.get('severity').upper()}: {issue.get('file', 'unknown')}:{issue.get('line', 0)} - {issue.get('type', 'unknown')}\")
+        print(f\"    {issue.get('message', '')[:70]}\")
+" 2>/dev/null || true
                 exit 1
             fi
         fi
