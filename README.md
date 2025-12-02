@@ -126,6 +126,34 @@ A pre-push hook can run the agent automatically.
 
 ---
 
+## 🎯 Recommended Model Setup
+
+For best security detection, use **qwen2.5-coder:7b** (runs 100% locally):
+
+```bash
+# Download model (one-time, ~4.7GB)
+ollama pull qwen2.5-coder:7b
+
+# Verify installation
+ollama list | grep qwen2.5-coder
+
+# Model will be used automatically after updating config.yaml
+```
+
+**Why qwen2.5-coder:7b?**
+- ✅ Specifically trained for code analysis
+- ✅ Excellent at detecting security vulnerabilities
+- ✅ Runs 100% locally (no data leaves your machine)
+- ✅ Good balance: 10-15 seconds per review
+- ✅ Much better than smaller models (gemma:2b)
+
+**Alternative Models:**
+- `qwen2.5-coder:3b` - Faster, still better than gemma:2b (~2GB)
+- `codellama:7b` - Meta's code model, good alternative (~3.8GB)
+- `deepseek-coder:6.7b` - Another strong option (~3.8GB)
+
+---
+
 ## ⚡ Quick Start
 
 ### 1. Install Dependencies

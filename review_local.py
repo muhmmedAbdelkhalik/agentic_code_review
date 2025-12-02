@@ -647,17 +647,21 @@ class CodeReviewAgent:
         print("   • PHPUnit...")
         phpunit_output, phpunit_version = self.tool_runner.run_phpunit()
         
-        # Step 3: Include full file content for small files (< 200 lines)
+        # Step 3: Include full file content for small files (< 300 lines)
         project_files_content = ""
         for file_path in changed_files:
             if file_path.endswith('.php') and os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         lines = f.readlines()
-                        if len(lines) < 200:  # Include full content for small files
-                            project_files_content += f"\n---FILE: {file_path}---\n"
+                        if len(lines) < 300:  # Increased from 200 to cover most controllers
+                            project_files_content += f"\n{'='*80}\n"
+                            project_files_content += f"FULL FILE: {file_path}\n"
+                            project_files_content += f"{'='*80}\n"
+                            project_files_content += "INSTRUCTION: Scan this ENTIRE file for ALL items in MANDATORY SECURITY CHECKLIST.\n"
+                            project_files_content += f"File has {len(lines)} lines. Review every line.\n\n"
                             project_files_content += "".join(lines)
-                            project_files_content += "\n"
+                            project_files_content += f"\n{'='*80}\n\n"
                 except Exception as e:
                     logging.warning(f"Could not read file {file_path}: {e}")
         

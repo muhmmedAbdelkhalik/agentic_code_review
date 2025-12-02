@@ -3,10 +3,10 @@
 # Ollama Server Settings (switched from LocalAI for better CPU performance)
 localai:
   url: "http://localhost:11434"
-  model: "gemma:2b"
+  model: "qwen2.5-coder:7b"  # Changed from gemma:2b for better security detection
   temperature: 0.2
-  max_tokens: 3000
-  timeout: 60  # seconds (Ollama is much faster)
+  max_tokens: 4000  # Increased from 3000 for more detailed output
+  timeout: 120  # Increased from 60 for larger model
 
 # PHP Analysis Tools
 tools:

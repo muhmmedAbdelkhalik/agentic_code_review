@@ -20,6 +20,46 @@ BEHAVIORAL RULES:
 
 • **CRITICAL INSTRUCTION: You must analyze the ENTIRE file content shown in the diff, not just the changed lines. Look for ALL security vulnerabilities, performance issues, bugs, and code quality problems in the file. Do not miss any issues just because they weren't in the changed lines.**
 
+MANDATORY SECURITY CHECKLIST - YOU MUST CHECK EVERY FILE FOR:
+
+1. Mass Assignment Vulnerabilities (CRITICAL):
+   - Pattern: $model->update($request->all())
+   - Pattern: $model->fill($request->all())
+   - Pattern: Model::create($request->all())
+   - Risk: Users can modify any field including is_admin, role, etc.
+
+2. SQL Injection (CRITICAL):
+   - Pattern: DB::select/raw with string interpolation: "WHERE x = {$var}"
+   - Pattern: whereRaw with unescaped variables
+   - Pattern: Direct concatenation in SQL queries
+   - Risk: Database compromise, data theft
+
+3. Missing Null Checks (CRITICAL):
+   - Pattern: Model::find($id) followed by method calls without null check
+   - Pattern: $user->delete() without checking if $user exists
+   - Risk: Application crashes, errors exposed to users
+
+4. N+1 Query Problems (HIGH):
+   - Pattern: Relationship access inside foreach: $post->user->name
+   - Pattern: Multiple queries in loops
+   - Risk: Severe performance degradation
+
+5. Missing Input Validation (HIGH):
+   - Pattern: Request data used without validation
+   - Pattern: No FormRequest class
+   - Risk: Invalid data processing, security issues
+
+6. XSS Vulnerabilities (CRITICAL):
+   - Pattern: {!! $variable !!} without sanitization
+   - Pattern: Unescaped output in views
+   - Risk: Script injection, session hijacking
+
+FOR EACH ISSUE FOUND:
+- Report with exact line number
+- Mark severity as CRITICAL or HIGH
+- Include code snippet in evidence
+- Provide specific fix suggestion
+
 • Include test suggestions when behavior is unclear (unit/integration test cases and where to place them).
 
 • If phpunit fails or shows warnings, prioritize interpreting test failures as functional regressions — include failing test names and stack traces in evidence.
@@ -115,21 +155,37 @@ USER:
 ---FILES---
 {project_files}
 
-ENGINEERING CHECKLIST (what the agent must do):
+ENGINEERING CHECKLIST (systematic approach):
 
 1. Parse git diff and locate modified/added files.
-2. **IMPORTANT: Analyze the ENTIRE file content, not just the changed lines. Look for ALL issues in the file, including:**
-   - Security vulnerabilities (mass assignment, SQL injection, XSS, etc.)
-   - Performance issues (N+1 queries, inefficient queries, etc.)
-   - Bugs (missing null checks, potential crashes, etc.)
-   - Code style violations
-   - Missing validations
-3. Map static analysis findings to specific lines in the diff (prefer changed lines).
-4. Correlate failing tests to changed files / functions.
-5. Produce issues with suggested_fix.patch when possible (unified diff snippets).
-6. Output .local_review.json and a one-line CLI summary (summary).
-7. If critical issues exist, include a blocking flag in the first issue's explain text (do not change schema).
-8. **CRITICAL: Do not limit yourself to only the changed lines. Review the entire file context and find ALL issues.**
+
+2. SECURITY SCAN (DO THIS FIRST - HIGHEST PRIORITY):
+   Go through MANDATORY SECURITY CHECKLIST item by item
+   For EACH item, scan the ENTIRE file
+   Report ALL matches with line numbers
+
+3. PERFORMANCE ANALYSIS:
+   - Scan for N+1 queries (already in checklist but double-check)
+   - Check for inefficient database queries
+   - Check for missing indexes or eager loading
+
+4. BUG DETECTION:
+   - Missing null checks (already in checklist but verify)
+   - Logic errors
+   - Potential crashes
+
+5. CODE QUALITY:
+   - Map phpstan findings to lines
+   - Map phpcs findings to lines
+   - Style violations
+
+6. Generate suggested_fix.patch for each issue
+
+7. FINAL VERIFICATION:
+   Before outputting JSON, verify you checked ALL 6 items in MANDATORY SECURITY CHECKLIST
+   Count how many issues you found for each category
+
+8. Output complete .local_review.json with ALL findings
 
 EXAMPLE OUTPUT SNIPPET:
 
