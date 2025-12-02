@@ -109,3 +109,17 @@ class PaymentController
         return $payment->status == 'completed';  // Will crash if payment is null!
     }
 }
+
+class ProductController
+{
+    public function index()
+    {
+        // This will trigger N+1 query warning
+        $products = Product::all();
+        
+        foreach ($products as $product) {
+            echo $product->category->name;  // N+1 here
+            echo $product->reviews->count(); // Another N+1
+        }
+    }
+}
