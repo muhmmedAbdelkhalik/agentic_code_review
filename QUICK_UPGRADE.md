@@ -72,6 +72,7 @@ cp backup_YYYYMMDD_HHMMSS/config.yaml config.yaml
 ## Need Help?
 
 - 📖 Full guide: [UPGRADE.md](UPGRADE.md)
+- 🔧 Troubleshooting: [UPGRADE_TROUBLESHOOTING.md](UPGRADE_TROUBLESHOOTING.md)
 - 📊 Test results: [TEST_RESULTS.md](TEST_RESULTS.md)
 - 💬 Questions? Open an issue
 

@@ -261,7 +261,11 @@ ollama pull qwen2.5-coder:7b
 
 ## 🆘 Troubleshooting
 
-### "Ollama is not running"
+The upgrade script includes automatic fixes for most common issues.
+
+### Quick Fixes
+
+**"Ollama is not running"**
 ```bash
 # macOS
 open -a Ollama
@@ -270,34 +274,34 @@ open -a Ollama
 ollama serve &
 ```
 
-### "Failed to download model"
+**"Failed to download model"**
 ```bash
-# Check internet connection
-curl -I https://ollama.ai
-
 # Try manual download
 ollama pull qwen2.5-coder:7b
 ```
 
-### "Config not updated correctly"
+**"Config not updated correctly"**
+The script now automatically fixes this! If it still fails:
 ```bash
-# Manually edit config.yaml
+# Edit manually
 nano config.yaml
-
-# Change these lines:
-model: "qwen2.5-coder:7b"
-max_tokens: 4000
-timeout: 120
+# Change: model: "qwen2.5-coder:7b"
+#         max_tokens: 4000
+#         timeout: 120
 ```
 
-### "Model not found after upgrade"
-```bash
-# Verify model exists
-ollama list | grep qwen
+### Complete Troubleshooting Guide
 
-# If not, download again
-ollama pull qwen2.5-coder:7b
-```
+For detailed solutions to all issues, see:
+
+📖 **[UPGRADE_TROUBLESHOOTING.md](UPGRADE_TROUBLESHOOTING.md)**
+
+Includes:
+- Automatic fix procedures
+- Manual fix instructions
+- Debug mode
+- Rollback procedures
+- Verification checklist
 
 ---
 
