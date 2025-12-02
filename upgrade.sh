@@ -137,21 +137,80 @@ if [ -f "${SCRIPT_DIR}/config.yaml" ]; then
     if grep -q 'model: "qwen2.5-coder:7b"' "${SCRIPT_DIR}/config.yaml"; then
         echo -e "${GREEN}✓${NC} config.yaml already up to date"
     else
-        # Update model name
+        echo -e "${YELLOW}⏳ Updating config.yaml...${NC}"
+        
+        # Update model name - try multiple patterns
         if [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS (BSD sed)
-            sed -i '' 's/model: "gemma:2b"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
-            sed -i '' 's/model: "gemma:.*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
-            sed -i '' 's/max_tokens: 3000/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
-            sed -i '' 's/timeout: 60/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
+            # Update model (try different patterns)
+            sed -i '' 's/model: *"gemma:2b"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i '' 's/model: *"gemma:[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i '' 's/model: *"phi3"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i '' 's/model: *"llama[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            
+            # Update in localai section specifically
+            sed -i '' '/^localai:/,/^[a-z]/ s/model: *"[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            
+            # Update max_tokens and timeout
+            sed -i '' 's/max_tokens: *[0-9]*/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
+            sed -i '' 's/timeout: *[0-9]*/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
         else
             # Linux (GNU sed)
-            sed -i 's/model: "gemma:2b"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
-            sed -i 's/model: "gemma:.*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
-            sed -i 's/max_tokens: 3000/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
-            sed -i 's/timeout: 60/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
+            # Update model (try different patterns)
+            sed -i 's/model: *"gemma:2b"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i 's/model: *"gemma:[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i 's/model: *"phi3"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            sed -i 's/model: *"llama[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            
+            # Update in localai section specifically
+            sed -i '/^localai:/,/^[a-z]/ s/model: *"[^"]*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+            
+            # Update max_tokens and timeout
+            sed -i 's/max_tokens: *[0-9]*/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
+            sed -i 's/timeout: *[0-9]*/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
         fi
-        echo -e "${GREEN}✓${NC} Updated config.yaml"
+        
+        # Verify the update worked
+        if grep -q 'model: "qwen2.5-coder:7b"' "${SCRIPT_DIR}/config.yaml"; then
+            echo -e "${GREEN}✓${NC} Updated config.yaml"
+        else
+            echo -e "${YELLOW}⚠️  sed update didn't work, trying Python...${NC}"
+            
+            # Fallback: Use Python to update YAML
+            python3 << 'PYTHON_EOF'
+import sys
+import re
+
+config_file = "${SCRIPT_DIR}/config.yaml"
+try:
+    with open(config_file, 'r') as f:
+        content = f.read()
+    
+    # Update model in localai section
+    content = re.sub(r'(localai:.*?model:\s*")[^"]*(")', r'\1qwen2.5-coder:7b\2', content, flags=re.DOTALL)
+    
+    # Update max_tokens
+    content = re.sub(r'max_tokens:\s*\d+', 'max_tokens: 4000', content)
+    
+    # Update timeout
+    content = re.sub(r'timeout:\s*\d+', 'timeout: 120', content)
+    
+    with open(config_file, 'w') as f:
+        f.write(content)
+    
+    print("✓ Updated using Python")
+    sys.exit(0)
+except Exception as e:
+    print(f"❌ Python update failed: {e}")
+    sys.exit(1)
+PYTHON_EOF
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓${NC} Updated config.yaml (using Python)"
+            else
+                echo -e "${YELLOW}⚠️  Automatic update failed${NC}"
+            fi
+        fi
     fi
 else
     echo -e "${RED}❌ config.yaml not found${NC}"
@@ -201,7 +260,43 @@ if grep -q 'model: "qwen2.5-coder:7b"' "${SCRIPT_DIR}/config.yaml"; then
     echo -e "${GREEN}✓${NC} Config: Using qwen2.5-coder:7b"
 else
     echo -e "${RED}❌ Config not updated correctly${NC}"
-    exit 1
+    echo ""
+    echo -e "${YELLOW}🔧 Attempting to fix...${NC}"
+    
+    # Try to fix it manually
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS (BSD sed)
+        sed -i '' 's/model: ".*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+        sed -i '' 's/max_tokens: [0-9]*/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
+        sed -i '' 's/timeout: [0-9]*/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
+    else
+        # Linux (GNU sed)
+        sed -i 's/model: ".*"/model: "qwen2.5-coder:7b"/' "${SCRIPT_DIR}/config.yaml"
+        sed -i 's/max_tokens: [0-9]*/max_tokens: 4000/' "${SCRIPT_DIR}/config.yaml"
+        sed -i 's/timeout: [0-9]*/timeout: 120/' "${SCRIPT_DIR}/config.yaml"
+    fi
+    
+    # Verify fix worked
+    if grep -q 'model: "qwen2.5-coder:7b"' "${SCRIPT_DIR}/config.yaml"; then
+        echo -e "${GREEN}✓${NC} Config fixed successfully"
+    else
+        echo -e "${RED}❌ Automatic fix failed${NC}"
+        echo ""
+        echo -e "${YELLOW}📝 Please manually update config.yaml:${NC}"
+        echo ""
+        echo "  1. Open config.yaml in your editor"
+        echo "  2. Find the 'localai:' section"
+        echo "  3. Change these lines:"
+        echo ""
+        echo "     model: \"qwen2.5-coder:7b\""
+        echo "     max_tokens: 4000"
+        echo "     timeout: 120"
+        echo ""
+        echo -e "${YELLOW}Then run this command to verify:${NC}"
+        echo "  grep 'model:' config.yaml"
+        echo ""
+        exit 1
+    fi
 fi
 
 # Check required files exist
