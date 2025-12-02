@@ -647,16 +647,31 @@ class CodeReviewAgent:
         print("   • PHPUnit...")
         phpunit_output, phpunit_version = self.tool_runner.run_phpunit()
         
-        # Step 3: Build prompt
+        # Step 3: Include full file content for small files (< 200 lines)
+        project_files_content = ""
+        for file_path in changed_files:
+            if file_path.endswith('.php') and os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        if len(lines) < 200:  # Include full content for small files
+                            project_files_content += f"\n---FILE: {file_path}---\n"
+                            project_files_content += "".join(lines)
+                            project_files_content += "\n"
+                except Exception as e:
+                    logging.warning(f"Could not read file {file_path}: {e}")
+        
+        # Step 4: Build prompt
         print("\n📤 Building prompt for LocalAI...")
         prompt = self.prompt_builder.build_prompt(
             git_diff=git_diff,
             phpstan_output=phpstan_output,
             phpcs_output=phpcs_output,
-            phpunit_output=phpunit_output
+            phpunit_output=phpunit_output,
+            project_files=project_files_content if project_files_content else None
         )
         
-        # Step 4: Call LocalAI
+        # Step 5: Call LocalAI
         print(f"\n🤖 Calling LocalAI ({self.config.get('localai', 'model')})...")
         review = self.localai_client.generate_review(prompt)
         

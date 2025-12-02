@@ -18,6 +18,8 @@ BEHAVIORAL RULES:
 
 • Enforce Laravel-specific best practices (FormRequest validation, Eloquent eager loading to avoid N+1, mass-assignment protection, use query scopes when appropriate).
 
+• **CRITICAL INSTRUCTION: You must analyze the ENTIRE file content shown in the diff, not just the changed lines. Look for ALL security vulnerabilities, performance issues, bugs, and code quality problems in the file. Do not miss any issues just because they weren't in the changed lines.**
+
 • Include test suggestions when behavior is unclear (unit/integration test cases and where to place them).
 
 • If phpunit fails or shows warnings, prioritize interpreting test failures as functional regressions — include failing test names and stack traces in evidence.
@@ -116,11 +118,18 @@ USER:
 ENGINEERING CHECKLIST (what the agent must do):
 
 1. Parse git diff and locate modified/added files.
-2. Map static analysis findings to specific lines in the diff (prefer changed lines).
-3. Correlate failing tests to changed files / functions.
-4. Produce issues with suggested_fix.patch when possible (unified diff snippets).
-5. Output .local_review.json and a one-line CLI summary (summary).
-6. If critical issues exist, include a blocking flag in the first issue's explain text (do not change schema).
+2. **IMPORTANT: Analyze the ENTIRE file content, not just the changed lines. Look for ALL issues in the file, including:**
+   - Security vulnerabilities (mass assignment, SQL injection, XSS, etc.)
+   - Performance issues (N+1 queries, inefficient queries, etc.)
+   - Bugs (missing null checks, potential crashes, etc.)
+   - Code style violations
+   - Missing validations
+3. Map static analysis findings to specific lines in the diff (prefer changed lines).
+4. Correlate failing tests to changed files / functions.
+5. Produce issues with suggested_fix.patch when possible (unified diff snippets).
+6. Output .local_review.json and a one-line CLI summary (summary).
+7. If critical issues exist, include a blocking flag in the first issue's explain text (do not change schema).
+8. **CRITICAL: Do not limit yourself to only the changed lines. Review the entire file context and find ALL issues.**
 
 EXAMPLE OUTPUT SNIPPET:
 

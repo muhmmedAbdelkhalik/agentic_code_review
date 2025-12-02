@@ -18,13 +18,13 @@ class TestBlockPushController extends Controller
     public function updateUser(Request $request, $id)
     {
         $user = User::find($id);
-        
+
         // CRITICAL SECURITY ISSUE: Mass assignment without filtering
         $user->update($request->all()); // This allows users to modify any field!
-        
+
         return response()->json(['success' => true]);
     }
-    
+
     /**
      * CRITICAL: N+1 query problem
      * Database queries executed in a loop
@@ -33,7 +33,7 @@ class TestBlockPushController extends Controller
     {
         $user = User::find($userId);
         $posts = $user->posts; // First query
-        
+
         $result = [];
         foreach ($posts as $post) {
             // CRITICAL PERFORMANCE ISSUE: Query executed for each iteration
@@ -43,10 +43,10 @@ class TestBlockPushController extends Controller
                 'comments' => $post->comments->count(), // Another N+1 query!
             ];
         }
-        
+
         return response()->json($result);
     }
-    
+
     /**
      * CRITICAL: Missing null check
      * Code will crash if user is not found
@@ -54,23 +54,23 @@ class TestBlockPushController extends Controller
     public function deleteUser($id)
     {
         $user = User::find($id);
-        
+
         // CRITICAL BUG: No null check - will crash if user doesn't exist
         $user->delete(); // This will throw an error if $user is null!
-        
+
         return response()->json(['success' => true]);
     }
-    
+
     /**
      * CRITICAL: SQL injection vulnerability (if using raw queries)
      */
     public function searchUsers(Request $request)
     {
         $search = $request->input('search');
-        
+
         // CRITICAL SECURITY ISSUE: Direct string interpolation in SQL
         $users = \DB::select("SELECT * FROM users WHERE name LIKE '%{$search}%'");
-        
+
         return response()->json($users);
     }
     public function testCriticalIssue()
@@ -79,6 +79,11 @@ class TestBlockPushController extends Controller
         $this->getUserPosts(1);
         $this->deleteUser(1);
         $this->searchUsers(new Request(['search' => 'test']));
+    }
+
+    public function testHighIssue()
+    {
+        $this->getUserPosts(1);
     }
 }
 
