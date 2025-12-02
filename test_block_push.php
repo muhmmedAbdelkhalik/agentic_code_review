@@ -73,6 +73,13 @@ class TestBlockPushController extends Controller
         
         return response()->json($users);
     }
+    public function testCriticalIssue()
+    {
+        $this->updateUser(new Request(['name' => 'test']), 1);
+        $this->getUserPosts(1);
+        $this->deleteUser(1);
+        $this->searchUsers(new Request(['search' => 'test']));
+    }
 }
 
 // New critical issue test
