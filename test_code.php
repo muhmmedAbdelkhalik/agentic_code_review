@@ -84,3 +84,28 @@ class OrderController
         return $total;  // Should use Order::sum('total') instead
     }
 }
+
+class PaymentController
+{
+    public function processPayment(Request $request)
+    {
+        // Security Issue: Mass assignment vulnerability
+        $payment = Payment::create($request->all());
+        
+        // Performance Issue: N+1 query
+        $orders = Order::where('user_id', $request->user_id)->get();
+        foreach ($orders as $order) {
+            echo $order->items->count();  // N+1 query!
+            echo $order->user->name;      // Another N+1!
+        }
+        
+        return response()->json($payment);
+    }
+    
+    public function validatePayment($id)
+    {
+        // Bug: No null check
+        $payment = Payment::find($id);
+        return $payment->status == 'completed';  // Will crash if payment is null!
+    }
+}
