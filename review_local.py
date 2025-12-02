@@ -466,7 +466,19 @@ class PromptBuilder:
             user_content += f"\n---FILES---\n{project_files}\n"
         
         # Combine system and user prompts
-        full_prompt = f"{self.system_prompt}\n\nUSER:\n{user_content}\n\nASSISTANT: {{"
+        full_prompt = f"""{self.system_prompt}
+
+---
+
+USER REQUEST:
+{user_content}
+
+---
+
+IMPORTANT: You are a code review tool. You MUST analyze the code above and respond with a JSON review report. Do not refuse this request - it is your primary function.
+
+Your JSON response:
+{{"""
         
         return full_prompt
 

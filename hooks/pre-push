@@ -136,8 +136,41 @@ else
     echo -e "${YELLOW}   Check .local_review.log for details${NC}"
     echo -e "${YELLOW}   Skip review with: SKIP_REVIEW=1 git push${NC}"
     
-    # Don't block push on review failure (only on critical issues)
-    # Change this to 'exit 1' if you want to block on any failure
+    # Even if review script failed, check for blocking issues if review file exists
+    if [ -f ".local_review.json" ]; then
+        # Check for critical issues if blocking is enabled
+        BLOCK_ENABLED=false
+        if [ -f ".env" ] && grep -q "BLOCK_ON_CRITICAL=true" .env; then
+            BLOCK_ENABLED=true
+        elif python3 -c "import yaml; config = yaml.safe_load(open('config.yaml')); print('true' if config.get('review', {}).get('block_on_critical', False) else 'false')" 2>/dev/null | grep -q "true"; then
+            BLOCK_ENABLED=true
+        fi
+        
+        if [ "$BLOCK_ENABLED" = "true" ]; then
+            CRITICAL_COUNT=$(python3 -c "import json; issues = json.load(open('.local_review.json'))['issues']; print(len([i for i in issues if i.get('severity') == 'critical']))" 2>/dev/null || echo "0")
+            HIGH_COUNT=$(python3 -c "import json; issues = json.load(open('.local_review.json'))['issues']; print(len([i for i in issues if i.get('severity') == 'high']))" 2>/dev/null || echo "0")
+            TOTAL_BLOCKING=$((CRITICAL_COUNT + HIGH_COUNT))
+            
+            if [ "$TOTAL_BLOCKING" -gt 0 ]; then
+                echo ""
+                echo -e "${RED}🚫 BLOCKING PUSH: $CRITICAL_COUNT critical + $HIGH_COUNT high severity issue(s) found${NC}"
+                echo -e "${RED}   Fix these issues or skip review with: SKIP_REVIEW=1 git push${NC}"
+                echo ""
+                echo -e "${YELLOW}Issues found:${NC}"
+                python3 -c "
+import json
+data = json.load(open('.local_review.json'))
+for issue in data.get('issues', []):
+    if issue.get('severity') in ['critical', 'high']:
+        print(f\"  • {issue.get('severity').upper()}: {issue.get('file', 'unknown')}:{issue.get('line', 0)} - {issue.get('type', 'unknown')}\")
+        print(f\"    {issue.get('message', '')[:70]}\")
+" 2>/dev/null || true
+                exit 1
+            fi
+        fi
+    fi
+    
+    # Don't block push on review failure if no blocking issues found
     exit 0
 fi
 
