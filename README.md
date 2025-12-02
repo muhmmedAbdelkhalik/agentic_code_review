@@ -152,6 +152,16 @@ ollama list | grep qwen2.5-coder
 - `codellama:7b` - Meta's code model, good alternative (~3.8GB)
 - `deepseek-coder:6.7b` - Another strong option (~3.8GB)
 
+### 🔄 Upgrading from Old Installation?
+
+If you're already using the agent with `gemma:2b`, upgrade automatically:
+
+```bash
+./upgrade.sh
+```
+
+📖 **See [UPGRADE.md](UPGRADE.md) for complete upgrade guide.**
+
 ---
 
 ## ⚡ Quick Start
