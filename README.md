@@ -15,8 +15,30 @@ Key goals of this project:
 - ⚡ Enhance code quality early (before PR stage)  
 - 🔐 Keep company source code completely private (local LLM)  
 - 🧠 Provide smart suggestions powered by AI  
-- 🛠 Integrate with Laravel’s ecosystem (phpstan, phpcs, phpunit)  
-- 💻 Run directly on each developer’s device (Mac, Linux, Windows via WSL)
+- 🛠 Integrate with Laravel's ecosystem (phpstan, phpcs, phpunit)  
+- 💻 Run directly on each developer's device (Mac, Linux, Windows via WSL)
+
+---
+
+## ⚡ Quick Install
+
+Install in your Laravel/PHP project with one command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/install.sh | bash -s /path/to/your/project
+```
+
+Or locally:
+
+```bash
+git clone https://github.com/muhmmedAbdelkhalik/agentic_code_review.git
+cd agentic_code_review
+./install.sh /path/to/your/laravel/project
+```
+
+**That's it!** The agent is now installed and ready to use.
+
+📖 **See [INSTALL.md](INSTALL.md) for detailed installation options.**
 
 ---
 
@@ -98,9 +120,9 @@ A pre-push hook can run the agent automatically.
 - **Git** for version control
 - **PHP 7.4+** with Composer (for Laravel projects)
 - **PHP Analysis Tools** (optional but recommended):
-  - phpstan
+  - phpstan  
   - phpcs (PHP_CodeSniffer)
-  - phpunit
+  - phpunit  
 
 ---
 
