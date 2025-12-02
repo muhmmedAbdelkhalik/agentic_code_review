@@ -1,0 +1,20 @@
+# LocalAI Code Review Agent Dependencies
+
+# HTTP client for LocalAI API
+requests>=2.32.0,<3.0.0
+
+# Configuration parsing
+pyyaml>=6.0,<7.0
+
+# JSON schema validation
+jsonschema>=4.20.0,<5.0
+
+# Terminal colors and formatting
+colorama>=0.4.6
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: for better error messages
+rich>=13.7.1
+

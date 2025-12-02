@@ -1,0 +1,108 @@
+{
+  "summary": "Found 3 issues: 1 security concern with missing validation, 1 performance issue with potential N+1 query, and 1 style violation. Recommend adding FormRequest validation and eager loading.",
+  "issues": [
+    {
+      "id": "app/Http/Controllers/OrderController.php:45:a3f2b1",
+      "file": "app/Http/Controllers/OrderController.php",
+      "line": 45,
+      "type": "performance",
+      "severity": "high",
+      "message": "Possible N+1 query detected when fetching orders and accessing user relationship inside loop.",
+      "evidence": {
+        "source": "git_diff",
+        "snippet": "foreach($orders as $order) {\n    echo $order->user->name;\n}",
+        "extra": "Pattern matches common N+1 anti-pattern in Eloquent"
+      },
+      "suggested_fix": {
+        "description": "Eager-load 'user' relationship when querying orders to avoid N+1 queries.",
+        "patch": "@@ -42,7 +42,7 @@\n public function index()\n {\n-    $orders = Order::all();\n+    $orders = Order::with('user')->get();\n     foreach($orders as $order) {\n         echo $order->user->name;",
+        "files_touched": [
+          "app/Http/Controllers/OrderController.php"
+        ]
+      },
+      "confidence": 0.92,
+      "explain": "Detected N+1 pattern in changed file; phpstan did not flag it but code pattern is common in Laravel"
+    },
+    {
+      "id": "app/Http/Controllers/OrderController.php:77:b8c4d2",
+      "file": "app/Http/Controllers/OrderController.php",
+      "line": 77,
+      "type": "security",
+      "severity": "critical",
+      "message": "Missing input validation on user-provided data before database insertion.",
+      "evidence": {
+        "source": "git_diff",
+        "snippet": "$order = Order::create($request->all());",
+        "extra": "Mass assignment without validation is a security risk"
+      },
+      "suggested_fix": {
+        "description": "Use FormRequest validation or explicit $request->validate() to sanitize and validate input.",
+        "patch": "@@ -75,7 +75,10 @@\n public function store(Request $request)\n {\n-    $order = Order::create($request->all());\n+    $validated = $request->validate([\n+        'product_id' => 'required|exists:products,id',\n+        'quantity' => 'required|integer|min:1'\n+    ]);\n+    $order = Order::create($validated);",
+        "files_touched": [
+          "app/Http/Controllers/OrderController.php"
+        ]
+      },
+      "confidence": 0.94,
+      "explain": "CRITICAL: Mass assignment without validation detected in git diff; phpstan may not catch this runtime issue"
+    },
+    {
+      "id": "app/Http/Controllers/OrderController.php:23:c9d5e3",
+      "file": "app/Http/Controllers/OrderController.php",
+      "line": 23,
+      "type": "style",
+      "severity": "low",
+      "message": "Method name does not follow PSR-12 camelCase convention.",
+      "evidence": {
+        "source": "phpcs",
+        "snippet": "public function get_orders()",
+        "extra": "PHPCS rule: PSR12.Methods.MethodDeclaration"
+      },
+      "suggested_fix": {
+        "description": "Rename method to follow PSR-12 camelCase naming convention.",
+        "patch": "@@ -21,7 +21,7 @@\n  * Get all orders\n  */\n-public function get_orders()\n+public function getOrders()",
+        "files_touched": [
+          "app/Http/Controllers/OrderController.php"
+        ]
+      },
+      "confidence": 1.0,
+      "explain": "PHPCS reported PSR-12 violation for method naming convention"
+    }
+  ],
+  "recommendations": [
+    {
+      "area": "security",
+      "suggestion": "Create a dedicated FormRequest class (StoreOrderRequest) for order validation instead of inline validation.",
+      "rationale": "FormRequest classes provide better separation of concerns, reusability, and centralized validation logic.",
+      "priority": "high"
+    },
+    {
+      "area": "tests",
+      "suggestion": "Add unit tests for OrderController methods, especially for the validation and N+1 scenarios.",
+      "rationale": "No test coverage detected for the new OrderController. Tests should verify validation rules and query efficiency.",
+      "priority": "high"
+    },
+    {
+      "area": "style",
+      "suggestion": "Run php-cs-fixer to automatically fix PSR-12 style violations.",
+      "rationale": "Multiple style issues detected. Automated formatting ensures consistency across the codebase.",
+      "priority": "medium"
+    },
+    {
+      "area": "architecture",
+      "suggestion": "Consider moving business logic from controller to a service class (OrderService).",
+      "rationale": "Controllers should be thin. Complex order processing logic would benefit from a dedicated service layer.",
+      "priority": "low"
+    }
+  ],
+  "meta": {
+    "analyzed_at": "2025-12-02T14:30:45+02:00",
+    "tool_versions": {
+      "phpstan": "PHPStan 1.10.50",
+      "phpcs": "PHP_CodeSniffer 3.7.2",
+      "phpunit": "PHPUnit 9.6.15",
+      "localai_model": "mistral-7b-instruct"
+    },
+    "duration_seconds": 12.4
+  }
+}
+

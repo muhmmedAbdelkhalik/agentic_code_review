@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# Git pre-push hook for LocalAI Code Review Agent
+#
+# This hook runs the code review agent before pushing code to remote.
+# It can optionally block pushes if critical issues are found.
+#
+# Installation:
+#   Run: ./install_hooks.sh
+#   Or manually: cp hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# Configuration:
+#   Set BLOCK_ON_CRITICAL=true in .env to block pushes on critical issues
+#   Set SKIP_REVIEW=1 environment variable to skip review for this push
+#
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Check if review should be skipped
+if [ -n "$SKIP_REVIEW" ]; then
+    echo -e "${YELLOW}⚠️  Skipping code review (SKIP_REVIEW is set)${NC}"
+    exit 0
+fi
+
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}❌ Python 3 is required but not installed${NC}"
+    exit 1
+fi
+
+# Check if review_local.py exists
+if [ ! -f "review_local.py" ]; then
+    echo -e "${RED}❌ review_local.py not found${NC}"
+    exit 1
+fi
+
+# Check if LocalAI is running
+if ! curl -s http://localhost:8080/readyz > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  LocalAI is not running at http://localhost:8080${NC}"
+    echo -e "${YELLOW}   Start it with: docker-compose up -d${NC}"
+    echo -e "${YELLOW}   Or skip review with: SKIP_REVIEW=1 git push${NC}"
+    exit 1
+fi
+
+echo -e "${CYAN}🤖 Running LocalAI Code Review Agent...${NC}"
+echo ""
+
+# Run the review agent
+if python3 review_local.py; then
+    echo ""
+    echo -e "${GREEN}✅ Code review completed successfully${NC}"
+    
+    # Check if review file was created
+    if [ -f ".local_review.json" ]; then
+        # Extract summary using Python (more reliable than jq)
+        SUMMARY=$(python3 -c "import json; print(json.load(open('.local_review.json'))['summary'])" 2>/dev/null || echo "Review completed")
+        echo -e "${CYAN}📋 Summary: ${SUMMARY}${NC}"
+        
+        # Check for critical issues if blocking is enabled
+        if [ -f ".env" ] && grep -q "BLOCK_ON_CRITICAL=true" .env; then
+            CRITICAL_COUNT=$(python3 -c "import json; issues = json.load(open('.local_review.json'))['issues']; print(len([i for i in issues if i.get('severity') == 'critical']))" 2>/dev/null || echo "0")
+            
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+                echo ""
+                echo -e "${RED}🚫 BLOCKING PUSH: $CRITICAL_COUNT critical issue(s) found${NC}"
+                echo -e "${RED}   Fix critical issues or skip review with: SKIP_REVIEW=1 git push${NC}"
+                exit 1
+            fi
+        fi
+    fi
+    
+    echo ""
+    echo -e "${GREEN}✅ Push allowed${NC}"
+    exit 0
+else
+    echo ""
+    echo -e "${YELLOW}⚠️  Code review failed or returned errors${NC}"
+    echo -e "${YELLOW}   Check .local_review.log for details${NC}"
+    echo -e "${YELLOW}   Skip review with: SKIP_REVIEW=1 git push${NC}"
+    
+    # Don't block push on review failure (only on critical issues)
+    # Change this to 'exit 1' if you want to block on any failure
+    exit 0
+fi
+

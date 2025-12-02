@@ -1,0 +1,57 @@
+# LocalAI Code Review Agent Configuration
+
+# LocalAI Server Settings
+localai:
+  url: "http://localhost:8080"
+  model: "mistral-7b-instruct"
+  temperature: 0.2
+  max_tokens: 3000
+  timeout: 120  # seconds
+
+# PHP Analysis Tools
+tools:
+  phpstan:
+    enabled: true
+    path: "phpstan"
+    args: ["analyse", "--error-format=json", "--no-progress"]
+  phpcs:
+    enabled: true
+    path: "phpcs"
+    args: ["--report=json", "--standard=PSR12"]
+  phpunit:
+    enabled: true
+    path: "phpunit"
+    args: ["--testdox", "--colors=never"]
+
+# Output Settings
+output:
+  file: ".local_review.json"
+  log_file: ".local_review.log"
+  verbose: false
+
+# Git Settings
+git:
+  diff_context: 5  # lines of context around changes
+  target_branch: "main"  # default branch to compare against
+
+# Review Behavior
+review:
+  max_issues: 100
+  block_on_critical: false  # set to true to block push on critical issues
+  min_confidence: 0.5  # minimum confidence to report an issue
+
+# Severity Levels (for display)
+severity:
+  critical:
+    color: "red"
+    symbol: "🔴"
+  high:
+    color: "yellow"
+    symbol: "🟡"
+  medium:
+    color: "blue"
+    symbol: "🔵"
+  low:
+    color: "green"
+    symbol: "🟢"
+

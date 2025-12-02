@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  localai:
+    image: quay.io/go-skynet/local-ai:latest
+    container_name: localai-code-review
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount models directory
+      - ./models:/models:cached
+      # Optional: mount config
+      - ./docker/localai/config:/config:ro
+    environment:
+      # Model configuration
+      - MODELS_PATH=/models
+      - THREADS=4
+      - CONTEXT_SIZE=4096
+      # Performance tuning
+      - DEBUG=false
+      # API settings
+      - ADDRESS=:8080
+    command: >
+      --models-path /models
+      --context-size 4096
+      --threads 4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/readyz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    restart: unless-stopped
+    networks:
+      - code-review-network
+
+networks:
+  code-review-network:
+    driver: bridge
+
+# To use this setup:
+# 1. Download a GGUF model (see docker/localai/README.md)
+# 2. Place it in ./models/ directory
+# 3. Run: docker-compose up -d
+# 4. Wait for the model to load (check logs: docker-compose logs -f localai)
+# 5. Test: curl http://localhost:8080/v1/models
+# 6. Run review_local.py
+

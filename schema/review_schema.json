@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://localai-code-review/schema/review.json",
+  "title": "Code Review Output Schema",
+  "description": "Schema for LocalAI Code Review Agent output",
+  "type": "object",
+  "required": ["summary", "issues", "recommendations", "meta"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of the review findings",
+      "minLength": 1
+    },
+    "issues": {
+      "type": "array",
+      "description": "List of identified issues",
+      "items": {
+        "type": "object",
+        "required": ["id", "file", "line", "type", "severity", "message", "evidence", "suggested_fix", "confidence", "explain"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the issue (e.g., file:line:hash)",
+            "pattern": "^.+:.+:.+$"
+          },
+          "file": {
+            "type": "string",
+            "description": "Path to the file containing the issue",
+            "minLength": 1
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number where the issue occurs",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of issue",
+            "enum": ["security", "performance", "style", "bug", "test", "maintenance"]
+          },
+          "severity": {
+            "type": "string",
+            "description": "Severity level of the issue",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable description of the issue",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "object",
+            "description": "Evidence supporting the issue",
+            "required": ["source", "snippet"],
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "Source of the evidence",
+                "enum": ["git_diff", "phpstan", "phpcs", "phpunit", "project_files"]
+              },
+              "snippet": {
+                "type": "string",
+                "description": "Code or output excerpt (max 400 chars)",
+                "maxLength": 400
+              },
+              "extra": {
+                "type": "string",
+                "description": "Additional context (test name, stack trace, rule id)"
+              }
+            }
+          },
+          "suggested_fix": {
+            "type": "object",
+            "description": "Suggested fix for the issue",
+            "required": ["description", "patch", "files_touched"],
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the suggested fix",
+                "minLength": 1
+              },
+              "patch": {
+                "type": "string",
+                "description": "Unified diff or replacement snippet"
+              },
+              "files_touched": {
+                "type": "array",
+                "description": "List of files affected by the fix",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Confidence level (0.0 to 1.0)",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "explain": {
+            "type": "string",
+            "description": "One-line rationale for the issue",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "General recommendations for improvement",
+      "items": {
+        "type": "object",
+        "required": ["area", "suggestion", "rationale", "priority"],
+        "properties": {
+          "area": {
+            "type": "string",
+            "description": "Area of improvement",
+            "enum": ["tests", "ci", "security", "style", "architecture"]
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "The recommendation",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Reasoning behind the recommendation",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "string",
+            "description": "Priority level",
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the review",
+      "required": ["analyzed_at", "tool_versions", "duration_seconds"],
+      "properties": {
+        "analyzed_at": {
+          "type": "string",
+          "description": "ISO8601 timestamp of analysis",
+          "format": "date-time"
+        },
+        "tool_versions": {
+          "type": "object",
+          "description": "Versions of tools used",
+          "required": ["phpstan", "phpcs", "phpunit", "localai_model"],
+          "properties": {
+            "phpstan": {
+              "type": "string"
+            },
+            "phpcs": {
+              "type": "string"
+            },
+            "phpunit": {
+              "type": "string"
+            },
+            "localai_model": {
+              "type": "string"
+            }
+          }
+        },
+        "duration_seconds": {
+          "type": "number",
+          "description": "Duration of analysis in seconds",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
+

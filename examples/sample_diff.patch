@@ -1,0 +1,130 @@
+diff --git a/app/Http/Controllers/OrderController.php b/app/Http/Controllers/OrderController.php
+new file mode 100644
+index 0000000..a1b2c3d
+--- /dev/null
++++ b/app/Http/Controllers/OrderController.php
+@@ -0,0 +1,95 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\Order;
++use Illuminate\Http\Request;
++use Illuminate\Http\JsonResponse;
++
++class OrderController extends Controller
++{
++    /**
++     * Display a listing of orders.
++     *
++     * @return JsonResponse
++     */
++    public function index(): JsonResponse
++    {
++        // Potential N+1 query issue here
++        $orders = Order::all();
++        
++        $result = [];
++        foreach($orders as $order) {
++            $result[] = [
++                'id' => $order->id,
++                'user' => $order->user->name, // N+1: accessing relationship in loop
++                'total' => $order->total,
++            ];
++        }
++        
++        return response()->json($result);
++    }
++
++    /**
++     * Get orders - naming convention issue
++     */
++    public function get_orders()
++    {
++        return Order::all();
++    }
++
++    /**
++     * Store a newly created order.
++     *
++     * @param Request $request
++     * @return JsonResponse
++     */
++    public function store(Request $request): JsonResponse
++    {
++        // Security issue: No validation before mass assignment
++        $order = Order::create($request->all());
++        
++        return response()->json([
++            'message' => 'Order created successfully',
++            'order' => $order
++        ], 201);
++    }
++
++    /**
++     * Display the specified order.
++     *
++     * @param int $id
++     * @return JsonResponse
++     */
++    public function show(int $id): JsonResponse
++    {
++        $order = Order::findOrFail($id);
++        
++        return response()->json($order);
++    }
++
++    /**
++     * Update the specified order.
++     *
++     * @param Request $request
++     * @param int $id
++     * @return JsonResponse
++     */
++    public function update(Request $request, int $id): JsonResponse
++    {
++        $order = Order::findOrFail($id);
++        
++        // Another validation issue
++        $order->update($request->all());
++        
++        return response()->json([
++            'message' => 'Order updated successfully',
++            'order' => $order
++        ]);
++    }
++
++    /**
++     * Remove the specified order.
++     */
++    public function destroy($id)
++    {
++        Order::findOrFail($id)->delete();
++        
++        return response()->json(['message' => 'Order deleted']);
++    }
++}
+diff --git a/app/Models/Order.php b/app/Models/Order.php
+index e1f2c3d..f4a5b6c 100644
+--- a/app/Models/Order.php
++++ b/app/Models/Order.php
+@@ -10,7 +10,7 @@ class Order extends Model
+ {
+     use HasFactory;
+ 
+-    protected $fillable = ['user_id', 'total'];
++    protected $fillable = ['user_id', 'product_id', 'quantity', 'total'];
+ 
+     public function user()
+     {
+diff --git a/routes/api.php b/routes/api.php
+index a1b2c3d..e4f5g6h 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -15,3 +15,5 @@ use App\Http\Controllers\OrderController;
+ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+     return $request->user();
+ });
++
++Route::apiResource('orders', OrderController::class);
+
