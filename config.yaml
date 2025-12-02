@@ -37,7 +37,7 @@ git:
 # Review Behavior
 review:
   max_issues: 100
-  block_on_critical: false  # set to true to block push on critical issues
+  block_on_critical: true  # set to true to block push on critical issues
   min_confidence: 0.5  # minimum confidence to report an issue
 
 # Severity Levels (for display)
