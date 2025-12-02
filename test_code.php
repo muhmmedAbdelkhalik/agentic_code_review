@@ -41,3 +41,47 @@ function testGitHook() {
         echo $user->profile->name; // Another potential N+1
     }
 }
+
+class OrderController
+{
+    public function processOrders()
+    {
+        // Issue 1: N+1 Query - fetching orders then accessing relationships in loop
+        $orders = Order::all();
+        
+        foreach ($orders as $order) {
+            echo $order->user->name;        // N+1 query!
+            echo $order->items->count();    // Another N+1!
+            echo $order->payment->status;   // Yet another N+1!
+        }
+        
+        return view('orders.index');
+    }
+    
+    public function updateOrder(Request $request, $id)
+    {
+        // Issue 2: Security - Mass assignment vulnerability
+        $order = Order::find($id);
+        $order->update($request->all());  // Dangerous!
+        
+        return response()->json($order);
+    }
+    
+    public function delete_order($id)  // Issue 3: Style - snake_case method name
+    {
+        Order::destroy($id);
+    }
+    
+    public function calculateTotal()
+    {
+        // Issue 4: Performance - Inefficient query
+        $total = 0;
+        $orders = Order::all();  // Loading all orders into memory!
+        
+        foreach ($orders as $order) {
+            $total += $order->total;
+        }
+        
+        return $total;  // Should use Order::sum('total') instead
+    }
+}
