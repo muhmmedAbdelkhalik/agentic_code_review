@@ -41,7 +41,6 @@ function testGitHook() {
         echo $user->profile->name; // Another potential N+1
     }
 }
-
 class OrderController
 {
     public function processOrders()
