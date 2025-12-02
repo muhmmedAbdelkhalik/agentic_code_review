@@ -280,7 +280,7 @@ class LocalAIClient:
     
     def generate_review(self, prompt: str, max_retries: int = 3) -> Dict:
         """
-        Send prompt to LocalAI and get review response.
+        Send prompt to LocalAI/Ollama and get review response.
         
         Args:
             prompt: The complete prompt to send
@@ -289,6 +289,11 @@ class LocalAIClient:
         Returns:
             Parsed JSON response
         """
+        # Check if using Ollama (port 11434) for native API
+        if ':11434' in self.base_url:
+            return self._generate_with_ollama(prompt, max_retries)
+        
+        # Otherwise use OpenAI-compatible endpoint
         url = f"{self.base_url}/v1/completions"
         
         payload = {
@@ -342,6 +347,54 @@ class LocalAIClient:
             
             except Exception as e:
                 logging.error(f"Error calling LocalAI: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                return {}
+        
+        return {}
+    
+    def _generate_with_ollama(self, prompt: str, max_retries: int = 3) -> Dict:
+        """Generate review using Ollama's native API."""
+        url = f"{self.base_url}/api/generate"
+        
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",  # Force JSON output
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": self.max_tokens
+            }
+        }
+        
+        for attempt in range(max_retries):
+            try:
+                logging.info(f"Sending request to Ollama (attempt {attempt + 1}/{max_retries})...")
+                
+                response = requests.post(
+                    url,
+                    json=payload,
+                    timeout=self.timeout
+                )
+                
+                response.raise_for_status()
+                result = response.json()
+                generated_text = result.get('response', '')
+                
+                # Ollama with format=json returns pure JSON
+                return self._parse_json_response(generated_text)
+            
+            except requests.exceptions.Timeout:
+                logging.error(f"Request timed out (attempt {attempt + 1})")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                return {}
+            
+            except Exception as e:
+                logging.error(f"Error calling Ollama: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                     continue

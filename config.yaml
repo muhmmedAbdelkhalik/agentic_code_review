@@ -1,12 +1,12 @@
 # LocalAI Code Review Agent Configuration
 
-# LocalAI Server Settings
+# Ollama Server Settings (switched from LocalAI for better CPU performance)
 localai:
-  url: "http://localhost:8080"
-  model: "mistral-7b-instruct"
+  url: "http://localhost:11434"
+  model: "gemma:2b"
   temperature: 0.2
   max_tokens: 3000
-  timeout: 120  # seconds
+  timeout: 60  # seconds (Ollama is much faster)
 
 # PHP Analysis Tools
 tools:
