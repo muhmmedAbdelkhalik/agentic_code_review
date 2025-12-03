@@ -5,44 +5,89 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Post;
-use App\Models\Order;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
-/**
- * Test controller with intentional security and code quality issues
- * This file is used to test the Git hook blocking functionality
- * Contains examples of: CRITICAL, HIGH, MEDIUM, and LOW severity issues
- */
 class TestBlockPushController extends Controller
 {
-    // ============================================================================
-    // TEST METHODS
-    // ============================================================================
-
-    public function testCriticalIssue()
+    /**
+     * CRITICAL: Mass assignment vulnerability
+     */
+    public function updateUser(Request $request, $id)
     {
-        $this->updateUser(new Request(['name' => 'test']), 1);
-        $this->getUserPosts(1);
-        $this->deleteUser(1);
-        $this->searchUsers(new Request(['search' => 'test']));
+        $user = User::find($id);
+        $user->update($request->all()); // CRITICAL: Allows modifying any field
+        return response()->json(['success' => true]);
     }
 
-    public function testHighIssue()
+    /**
+     * CRITICAL: SQL injection vulnerability
+     */
+    public function searchUsers(Request $request)
     {
-        $this->getUserPosts(1);
-        $this->createPost(new Request(['title' => 'test']));
+        $search = $request->input('search');
+        $users = DB::select("SELECT * FROM users WHERE name LIKE '%{$search}%'");
+        return response()->json($users);
     }
 
-    public function testMediumIssue()
+    /**
+     * CRITICAL: Missing null check
+     */
+    public function deleteUser($id)
     {
-        $this->getUserProfile(1);
-        $this->processPayment(new Request(['amount' => 100]));
+        $user = User::find($id);
+        $user->delete(); // CRITICAL: Will crash if $user is null
+        return response()->json(['success' => true]);
     }
 
-    public function testLowIssue()
+    /**
+     * HIGH: N+1 query problem
+     */
+    public function getUserPosts($userId)
     {
-        $this->get_user_data(1);
-        $this->checkAge(1);
+        $user = User::find($userId);
+        $posts = $user->posts;
+        
+        $result = [];
+        foreach ($posts as $post) {
+            $result[] = [
+                'title' => $post->title,
+                'author' => $post->user->name, // HIGH: N+1 query
+            ];
+        }
+        
+        return response()->json($result);
+    }
+
+    /**
+     * HIGH: Missing input validation
+     */
+    public function createPost(Request $request)
+    {
+        $post = Post::create([
+            'title' => $request->input('title'),
+            'content' => $request->input('content'),
+        ]);
+        return response()->json($post);
+    }
+
+    /**
+     * MEDIUM: Code duplication
+     */
+    public function getUserProfile($userId)
+    {
+        $user = User::find($userId);
+        return response()->json([
+            'name' => $user->first_name . ' ' . $user->last_name,
+            'email' => $user->email,
+        ]);
+    }
+
+    /**
+     * LOW: Code style issue
+     */
+    public function get_user_data($id)
+    {
+        $User = User::find($id);
+        return response()->json($User);
     }
 }
