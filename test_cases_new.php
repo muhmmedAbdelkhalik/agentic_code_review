@@ -83,7 +83,7 @@ class TestBlockPushController extends Controller
     }
 
     /**
-     * LOW: Code style issue
+     * LOW: Code style issue - snake_case method name
      */
     public function get_user_data($id)
     {
@@ -91,3 +91,4 @@ class TestBlockPushController extends Controller
         return response()->json($User);
     }
 }
+
