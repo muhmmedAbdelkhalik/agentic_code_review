@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-
 use Alkoumi\LaravelHijriDate\Hijri;
 use App\Http\Controllers\Controller;
 use App\Mail\AdminCorrespondencesEmail;
@@ -59,7 +58,6 @@ class CasesController extends Controller
         $case_status = Category::query()->where('type', 'case_status')->get();
         $case_type = 'case';
         return view('admin.pages.cases.index', compact('case_status', 'case_type'));
-
     }
 
     public function appeal()
@@ -67,7 +65,6 @@ class CasesController extends Controller
         $case_status = Category::query()->where('type', 'case_status')->get();
         $case_type = 'appeal';
         return view('admin.pages.cases.index', compact('case_status', 'case_type'));
-
     }
 
     public function higher()
@@ -75,7 +72,6 @@ class CasesController extends Controller
         $case_status = Category::query()->where('type', 'case_status')->get();
         $case_type = 'higher';
         return view('admin.pages.cases.index', compact('case_status', 'case_type'));
-
     }
 
     public function load(Request $request)
@@ -153,8 +149,8 @@ class CasesController extends Controller
             $cases = $cases->where(function ($query) use ($search) {
                 $query->where('case_number', 'like', '%' . $search . '%')
                     ->orWhere('date', 'like', '%' . $search . '%')
-//                    ->orWhere('ar_case_title', 'like', '%' . $search . '%')
-//                    ->orWhere('en_case_title', 'like', '%' . $search . '%')
+                    //                    ->orWhere('ar_case_title', 'like', '%' . $search . '%')
+                    //                    ->orWhere('en_case_title', 'like', '%' . $search . '%')
                     ->orWhere('id', 'like', '%' . $search . '%')->orwhereHas('court', function ($query) use ($search) {
                         $query->where('ar_name', 'like', '%' . $search . '%');
                     })->orwhereHas('case_status', function ($query) use ($search) {
@@ -194,7 +190,6 @@ class CasesController extends Controller
                     }
                 }
                 return $name;
-
             })
             ->addColumn('client_characteristics', function ($case) {
                 $characteristics = "";
@@ -240,7 +235,6 @@ class CasesController extends Controller
                     }
                 }
                 return $name ?: '-';
-
             })
             ->addColumn('court_name', function ($case) {
                 return optional($case->court)->name ?? '';
@@ -266,8 +260,11 @@ class CasesController extends Controller
             'case_id' => 'required',
         ]);
         $data = $request->only([
-            'case_id', 'task_id',
-            'session_details', 'court_decision', 'next_session_tasks'
+            'case_id',
+            'task_id',
+            'session_details',
+            'court_decision',
+            'next_session_tasks'
         ]);
         CaseSession::query()->create($data);
         return $request->all();
@@ -302,8 +299,11 @@ class CasesController extends Controller
             'case_id' => 'required',
         ]);
         $data = $request->only([
-            'case_id', 'judgment_number',
-            'date', 'court_id', 'notify_duration'
+            'case_id',
+            'judgment_number',
+            'date',
+            'court_id',
+            'notify_duration'
         ]);
         //upload document file
         if ($request->has('document')) {
@@ -333,7 +333,14 @@ class CasesController extends Controller
             'request_number' => 'required|string',
         ]);
         $data = $request->only([
-            'case_id', 'objection_type', 'request_number', 'ar_reason', 'en_reason', 'date', 'ar_result', 'en_result'
+            'case_id',
+            'objection_type',
+            'request_number',
+            'ar_reason',
+            'en_reason',
+            'date',
+            'ar_result',
+            'en_result'
         ]);
         if ($request->has('document')) {
             $Document = $request->file('document');
@@ -424,7 +431,8 @@ class CasesController extends Controller
             'document.mimes' => admin('Document Must Be Pdf,Doc,Docx,Xls,Xlsx,Ppt,Pptx,txt,Zip,Rar,7z,Jpg,Jpeg,Png,Gif,Bmp,Svg'),
         ]);
         $data = $request->only([
-            'objection_type', 'request_number',
+            'objection_type',
+            'request_number',
         ]);
 
         if ($request->has('document')) {
@@ -448,7 +456,6 @@ class CasesController extends Controller
         if ($request->get('type') == 'lawyer') {
             $cases = CaseUser::query()->where('case_id', $id)
                 ->where('user_department_id', 1);
-
         } else if ($request->get('type') == 'advisor') {
             $cases = CaseUser::query()->where('case_id', $id)
                 ->where('user_department_id', 2);
@@ -610,27 +617,40 @@ class CasesController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-//            'ar_case_title'=>'required',
-//            'case_number'=>'required',
-//            'date'=>'required',
-        ],
+        $request->validate(
             [
-//            'ar_case_title.required'=>admin('Arabic Case Title Is Title'),
-//            'sub_category_id'=>admin('Case Category Is Required'),
-//            'case_status_id'=>admin('Case Status Is Required'),
-//            'case_number'=>admin('Case Number Is Required'),
-//            'date'=>admin('Case Date Is Required'),
-            ]);
+                //            'ar_case_title'=>'required',
+                //            'case_number'=>'required',
+                //            'date'=>'required',
+            ],
+            [
+                //            'ar_case_title.required'=>admin('Arabic Case Title Is Title'),
+                //            'sub_category_id'=>admin('Case Category Is Required'),
+                //            'case_status_id'=>admin('Case Status Is Required'),
+                //            'case_number'=>admin('Case Number Is Required'),
+                //            'date'=>admin('Case Date Is Required'),
+            ]
+        );
         //check if request is valid
         $data = $request->only([
-//            'ar_case_title',
-            'case_number', 'case_status_id', 'department',
-            'sub_category_id', 'case_located_at', 'city_id',
-            'date', 'court_id', 'authority', 'ar_reason', 'en_reason',
-            'status', 'characterize_id', 'circle_id', 'date_hijri'
+            //            'ar_case_title',
+            'case_number',
+            'case_status_id',
+            'department',
+            'sub_category_id',
+            'case_located_at',
+            'city_id',
+            'date',
+            'court_id',
+            'authority',
+            'ar_reason',
+            'en_reason',
+            'status',
+            'characterize_id',
+            'circle_id',
+            'date_hijri'
         ]);
-//        $data['en_case_title'] = $data['ar_case_title'];
+        //        $data['en_case_title'] = $data['ar_case_title'];
 
         $data['case_located_at'] = 'court';
         $data['sub_category_id'] = $request->get('sub_category_id');
@@ -640,7 +660,6 @@ class CasesController extends Controller
             Cases::query()->findOrFail($id)->update($data);
             $case_id = $request->get('case_id');
             $item = Cases::query()->findOrFail($case_id);
-
         } else {
 
             $data['added_by'] = auth()->user()->id;
@@ -697,7 +716,6 @@ class CasesController extends Controller
             $return = ["result" => "error", "message" => admin("Add Operation Failed")];
         }
         return $return;
-
     }
 
     public function storeQuestionnaire(Request $request)
@@ -726,7 +744,6 @@ class CasesController extends Controller
                         if ($questionnaire->questionnaires->type == 'long_text') {
                             $questionnaire->long_reply = $replies[$key];
                             $questionnaire->save();
-
                         } elseif ($questionnaire->questionnaires->type == 'small_text') {
                             $questionnaire->small_reply = $replies[$key];
                             $questionnaire->save();
@@ -776,27 +793,35 @@ class CasesController extends Controller
         $data = Cases::query()->findOrFail($id);
         $data->opponents = CasesOpponents::where('case_id', $id)->with('opponents')->get();
         return view('admin.pages.cases.add', ['data' => $data, 'edit' => $edit]);
-
     }
 
     public function update(Request $request)
     {
 
-        $request->validate([
-            'en_name' => 'min: 2|required',
-            'ar_name' => 'min: 2|required',
-            'native_name' => ['required'],
-            'continent_id' => ['required'],
-            'code' => ['required'],
-        ],
+        $request->validate(
+            [
+                'en_name' => 'min: 2|required',
+                'ar_name' => 'min: 2|required',
+                'native_name' => ['required'],
+                'continent_id' => ['required'],
+                'code' => ['required'],
+            ],
             [
                 'en_name.required' => admin('English Name is required'),
                 'en_name.min' => admin('English Name at least must be 2 digits'),
                 'ar_name.required' => admin('Arabic Name is required'),
                 'ar_name.min' => admin('Arabic Name at least must be 2 digits'),
-            ]);
+            ]
+        );
         $data = $request->only([
-            'en_name', 'ar_name', 'native_name', 'code', 'continent_id', 'department', 'characterize_id', 'circle_id'
+            'en_name',
+            'ar_name',
+            'native_name',
+            'code',
+            'continent_id',
+            'department',
+            'characterize_id',
+            'circle_id'
         ]);
         $data['status'] = $request['status'] == "on" ? 'active' : 'inactive';
 
@@ -807,7 +832,6 @@ class CasesController extends Controller
             $return = ["result" => "error", "message" => admin("Edit Operation Failed")];
         }
         return $return;
-
     }
 
     public function destroy(Request $request)
@@ -888,7 +912,6 @@ class CasesController extends Controller
                 if (strpos('معطل', $search) !== false) {
                     $query->orwhere('status', 'like', '%' . 'inactive' . '%');
                 }
-
             });
         }
         return DataTables::make($caseDocuments)
@@ -1046,7 +1069,6 @@ class CasesController extends Controller
                 if (strpos('معطل', $search) !== false) {
                     $query->orwhere('status', 'like', '%' . 'inactive' . '%');
                 }
-
             });
         }
         return DataTables::make($CaseProcedures)
@@ -1183,7 +1205,7 @@ class CasesController extends Controller
 
     public function loadOpponents(Request $request)
     {
-//        $registered  = CasesOpponents::query()->where('case_id',$request->get('case_id'))->pluck('opponent_id')->toArray();
+        //        $registered  = CasesOpponents::query()->where('case_id',$request->get('case_id'))->pluck('opponent_id')->toArray();
         $Opponents = CasesOpponents::query()->with('opponents')->where('case_id', $request->get('case_id'));
         $search = $request->get('search', false);
         if ($search) {
@@ -1206,7 +1228,6 @@ class CasesController extends Controller
                 if (strpos('معطل', $search) !== false) {
                     $query->orwhere('status', 'like', '%' . 'inactive' . '%');
                 }
-
             });
         }
         return DataTables::make($Opponents)
@@ -1367,7 +1388,6 @@ class CasesController extends Controller
                 if (strpos('معطل', $search) !== false) {
                     $query->orwhere('status', 'like', '%' . 'inactive' . '%');
                 }
-
             });
         }
         return DataTables::make($sessions)
@@ -1424,7 +1444,8 @@ class CasesController extends Controller
             'document.mimes' => admin('Document Must Be Pdf,Doc,Docx,Xls,Xlsx,Ppt,Pptx,Txt,Zip,Rar,7z,Jpg,Jpeg,Png,Gif,Bmp,Svg'),
         ]);
         $data = $request->only([
-            'court_decision', 'session_details'
+            'court_decision',
+            'session_details'
         ]);
         $data['case_id'] = $id;
         //official_description
@@ -1463,7 +1484,9 @@ class CasesController extends Controller
             'document.mimes' => admin('Document Must Be Pdf,Doc,Docx,Xls,Xlsx,Ppt,Pptx,Txt,Zip,Rar,7z,Jpg,Jpeg,Png,Gif,Bmp,Svg'),
         ]);
         $data = $request->only([
-            'court_decision', 'session_details', 'next_session_tasks'
+            'court_decision',
+            'session_details',
+            'next_session_tasks'
         ]);
         $id = $request['id'];
         //official_description
