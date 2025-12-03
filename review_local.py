@@ -403,8 +403,7 @@ class LocalAIClient:
         return {}
     
     def _parse_json_response(self, text: str) -> Dict:
-        """Parse JSON from response text."""
-        # Try to find JSON in the response
+        """Parse JSON from response text and fix common LLM mistakes."""
         text = text.strip()
         
         # Look for JSON object boundaries
@@ -414,7 +413,36 @@ class LocalAIClient:
         if start_idx != -1 and end_idx != -1:
             json_str = text[start_idx:end_idx + 1]
             try:
-                return json.loads(json_str)
+                parsed = json.loads(json_str)
+                
+                # Check if wrapped in extra object (common LLM mistake)
+                if 'code_review' in parsed and isinstance(parsed['code_review'], dict):
+                    logging.warning("LLM wrapped response in 'code_review' object - unwrapping")
+                    parsed = parsed['code_review']
+                
+                # Check if issues is an object instead of array (common LLM mistake)
+                if 'issues' in parsed and isinstance(parsed['issues'], dict):
+                    logging.warning("LLM returned 'issues' as object instead of array - converting")
+                    parsed['issues'] = list(parsed['issues'].values()) if parsed['issues'] else []
+                
+                # Fix recommendations structure
+                if 'recommendations' in parsed and isinstance(parsed['recommendations'], list):
+                    parsed['recommendations'] = self._fix_recommendations(parsed['recommendations'])
+                
+                # Fix issues structure
+                if 'issues' in parsed and isinstance(parsed['issues'], list):
+                    parsed['issues'] = self._fix_issues(parsed['issues'])
+                
+                # Ensure required top-level fields exist
+                if 'summary' not in parsed:
+                    parsed['summary'] = "Analysis completed"
+                if 'issues' not in parsed:
+                    parsed['issues'] = []
+                if 'recommendations' not in parsed:
+                    parsed['recommendations'] = []
+                    
+                return parsed
+                
             except json.JSONDecodeError as e:
                 logging.error(f"Failed to parse JSON: {e}")
                 logging.debug(f"Attempted to parse: {json_str[:500]}...")
@@ -422,6 +450,179 @@ class LocalAIClient:
         
         logging.error("No valid JSON found in response")
         return {}
+    
+    def _fix_recommendations(self, recommendations: list) -> list:
+        """Fix recommendations structure to match schema."""
+        fixed = []
+        for rec in recommendations:
+            if not isinstance(rec, dict):
+                continue
+            
+            # Convert old format (id/description) to new format (area/suggestion/rationale/priority)
+            fixed_rec = {}
+            
+            # Map description to suggestion
+            if 'description' in rec:
+                fixed_rec['suggestion'] = rec['description']
+            elif 'suggestion' in rec:
+                fixed_rec['suggestion'] = rec['suggestion']
+            else:
+                fixed_rec['suggestion'] = "No suggestion provided"
+            
+            # Infer area from content or use default
+            if 'area' in rec and rec['area'] in ['tests', 'ci', 'security', 'style', 'architecture']:
+                fixed_rec['area'] = rec['area']
+            else:
+                # Try to infer from suggestion content
+                suggestion_lower = fixed_rec['suggestion'].lower()
+                if any(word in suggestion_lower for word in ['test', 'testing', 'unit', 'integration']):
+                    fixed_rec['area'] = 'tests'
+                elif any(word in suggestion_lower for word in ['security', 'vulnerability', 'injection', 'xss', 'csrf']):
+                    fixed_rec['area'] = 'security'
+                elif any(word in suggestion_lower for word in ['style', 'format', 'coding standard', 'psr']):
+                    fixed_rec['area'] = 'style'
+                elif any(word in suggestion_lower for word in ['ci', 'continuous integration', 'pipeline']):
+                    fixed_rec['area'] = 'ci'
+                else:
+                    fixed_rec['area'] = 'architecture'  # Default
+            
+            # Add rationale (use suggestion if not provided)
+            if 'rationale' in rec:
+                fixed_rec['rationale'] = rec['rationale']
+            else:
+                fixed_rec['rationale'] = fixed_rec['suggestion']
+            
+            # Infer priority from severity or use default
+            if 'priority' in rec and rec['priority'] in ['high', 'medium', 'low']:
+                fixed_rec['priority'] = rec['priority']
+            elif 'severity' in rec:
+                # Map severity to priority
+                severity_map = {'critical': 'high', 'high': 'high', 'medium': 'medium', 'low': 'low'}
+                fixed_rec['priority'] = severity_map.get(rec['severity'], 'medium')
+            else:
+                # Infer from content
+                suggestion_lower = fixed_rec['suggestion'].lower()
+                if any(word in suggestion_lower for word in ['critical', 'security', 'vulnerability', 'urgent']):
+                    fixed_rec['priority'] = 'high'
+                elif any(word in suggestion_lower for word in ['important', 'should', 'recommended']):
+                    fixed_rec['priority'] = 'medium'
+                else:
+                    fixed_rec['priority'] = 'low'
+            
+            fixed.append(fixed_rec)
+        
+        return fixed
+    
+    def _fix_issues(self, issues: list) -> list:
+        """Fix issues structure to match schema."""
+        fixed = []
+        for issue in issues:
+            if not isinstance(issue, dict):
+                continue
+            
+            fixed_issue = {}
+            
+            # Fix id format (should be file:line:hash)
+            if 'id' in issue:
+                id_val = str(issue['id'])
+                # Check if it's already in correct format
+                if ':' in id_val and id_val.count(':') >= 2:
+                    fixed_issue['id'] = id_val
+                else:
+                    # Generate proper id format
+                    file_name = issue.get('file', 'unknown')
+                    line_num = issue.get('line', 0)
+                    hash_part = str(hash(id_val))[:8]
+                    fixed_issue['id'] = f"{file_name}:{line_num}:{hash_part}"
+            else:
+                file_name = issue.get('file', 'unknown')
+                line_num = issue.get('line', 0)
+                hash_part = str(hash(str(issue)))[:8]
+                fixed_issue['id'] = f"{file_name}:{line_num}:{hash_part}"
+            
+            # Copy basic fields
+            fixed_issue['file'] = issue.get('file', 'unknown')
+            fixed_issue['line'] = int(issue.get('line', 0))
+            
+            # Convert description to message
+            if 'description' in issue:
+                fixed_issue['message'] = issue['description']
+            elif 'message' in issue:
+                fixed_issue['message'] = issue['message']
+            else:
+                fixed_issue['message'] = "Issue detected"
+            
+            # Fix severity
+            severity = issue.get('severity', 'low')
+            if severity not in ['critical', 'high', 'medium', 'low']:
+                # Normalize severity
+                severity_lower = str(severity).lower()
+                if 'critical' in severity_lower or 'urgent' in severity_lower:
+                    severity = 'critical'
+                elif 'high' in severity_lower or 'major' in severity_lower:
+                    severity = 'high'
+                elif 'medium' in severity_lower or 'moderate' in severity_lower:
+                    severity = 'medium'
+                else:
+                    severity = 'low'
+            fixed_issue['severity'] = severity
+            
+            # Infer type from content
+            if 'type' in issue and issue['type'] in ['security', 'performance', 'style', 'bug', 'test', 'maintenance']:
+                fixed_issue['type'] = issue['type']
+            else:
+                # Infer from message/description
+                message_lower = fixed_issue['message'].lower()
+                if any(word in message_lower for word in ['security', 'vulnerability', 'injection', 'xss', 'csrf', 'unauthorized']):
+                    fixed_issue['type'] = 'security'
+                elif any(word in message_lower for word in ['performance', 'slow', 'n+1', 'query', 'eager']):
+                    fixed_issue['type'] = 'performance'
+                elif any(word in message_lower for word in ['style', 'format', 'coding standard', 'psr']):
+                    fixed_issue['type'] = 'style'
+                elif any(word in message_lower for word in ['test', 'testing', 'coverage']):
+                    fixed_issue['type'] = 'test'
+                elif any(word in message_lower for word in ['bug', 'error', 'crash', 'null', 'exception']):
+                    fixed_issue['type'] = 'bug'
+                else:
+                    fixed_issue['type'] = 'maintenance'
+            
+            # Add evidence
+            if 'evidence' in issue and isinstance(issue['evidence'], dict):
+                fixed_issue['evidence'] = issue['evidence']
+            else:
+                fixed_issue['evidence'] = {
+                    'source': 'project_files',
+                    'snippet': fixed_issue['message'][:400]
+                }
+            
+            # Add suggested_fix
+            if 'suggested_fix' in issue and isinstance(issue['suggested_fix'], dict):
+                fixed_issue['suggested_fix'] = issue['suggested_fix']
+            else:
+                fixed_issue['suggested_fix'] = {
+                    'description': f"Review and fix the issue at line {fixed_issue['line']}",
+                    'patch': '',
+                    'files_touched': [fixed_issue['file']]
+                }
+            
+            # Add confidence
+            if 'confidence' in issue:
+                conf = float(issue['confidence'])
+                fixed_issue['confidence'] = max(0.0, min(1.0, conf))
+            else:
+                # Default confidence based on severity
+                confidence_map = {'critical': 0.9, 'high': 0.8, 'medium': 0.7, 'low': 0.6}
+                fixed_issue['confidence'] = confidence_map.get(severity, 0.7)
+            
+            # Add explain
+            if 'explain' in issue:
+                fixed_issue['explain'] = issue['explain']
+            else:
+                fixed_issue['explain'] = fixed_issue['message']
+            
+            fixed.append(fixed_issue)
+        
+        return fixed
 
 
 class PromptBuilder:
