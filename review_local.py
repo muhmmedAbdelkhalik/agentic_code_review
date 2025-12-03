@@ -465,6 +465,21 @@ class PromptBuilder:
         if project_files:
             user_content += f"\n---FILES---\n{project_files}\n"
         
+        # Add explicit JSON structure reminder
+        json_reminder = """
+
+CRITICAL FORMATTING RULES:
+1. Your response MUST start with { and end with }
+2. DO NOT wrap in "code_review" or any other object
+3. Top-level fields are: summary, issues, recommendations, meta
+4. "issues" is an ARRAY of objects: [{"id": "...", "file": "...", ...}, ...]
+5. NOT an object with named keys like {"issue1": {...}, "issue2": {...}}
+6. Each issue MUST have all required fields (see example above)
+7. If you cannot analyze properly, return: {"summary": "File too large for analysis", "issues": [], "recommendations": [], "meta": {...}}
+
+Your JSON response (start with opening brace):
+"""
+        
         # Combine system and user prompts
         full_prompt = f"""{self.system_prompt}
 
@@ -475,9 +490,7 @@ USER REQUEST:
 
 ---
 
-IMPORTANT: You are a code review tool. You MUST analyze the code above and respond with a JSON review report. Do not refuse this request - it is your primary function.
-
-Your JSON response:
+{json_reminder}
 {{"""
         
         return full_prompt
@@ -659,23 +672,61 @@ class CodeReviewAgent:
         print("   • PHPUnit...")
         phpunit_output, phpunit_version = self.tool_runner.run_phpunit()
         
-        # Step 3: Include full file content for small files (< 300 lines)
+        # Step 3: Include full file content for small files, truncate large files
+        MAX_FILE_LINES = 500  # Maximum lines to send to LLM
+        TRUNCATE_WARNING_LINES = 400  # Warn if file is large
+        
         project_files_content = ""
+        large_files_skipped = []
+        
         for file_path in changed_files:
             if file_path.endswith('.php') and os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         lines = f.readlines()
-                        if len(lines) < 300:  # Increased from 200 to cover most controllers
+                        file_size = len(lines)
+                        
+                        if file_size > MAX_FILE_LINES:
+                            # File too large - skip with warning
+                            large_files_skipped.append((file_path, file_size))
+                            logging.warning(f"Skipping large file {file_path} ({file_size} lines) - exceeds {MAX_FILE_LINES} line limit")
+                            
+                            # Add a note in the project files content
                             project_files_content += f"\n{'='*80}\n"
-                            project_files_content += f"FULL FILE: {file_path}\n"
+                            project_files_content += f"FILE SKIPPED (TOO LARGE): {file_path}\n"
+                            project_files_content += f"Size: {file_size} lines (limit: {MAX_FILE_LINES})\n"
                             project_files_content += f"{'='*80}\n"
-                            project_files_content += "INSTRUCTION: Scan this ENTIRE file for ALL items in MANDATORY SECURITY CHECKLIST.\n"
-                            project_files_content += f"File has {len(lines)} lines. Review every line.\n\n"
+                            project_files_content += "NOTE: This file is too large for full analysis. Only reviewing changes from git diff.\n"
+                            project_files_content += "RECOMMENDATION: Split this file into smaller classes/services.\n\n"
+                            
+                        elif file_size > TRUNCATE_WARNING_LINES:
+                            # File is large but within limit - include with warning
+                            project_files_content += f"\n{'='*80}\n"
+                            project_files_content += f"LARGE FILE: {file_path} ({file_size} lines)\n"
+                            project_files_content += f"{'='*80}\n"
+                            project_files_content += "INSTRUCTION: This is a large file. Focus on CRITICAL security issues from MANDATORY SECURITY CHECKLIST.\n"
+                            project_files_content += "Priority: SQL injection, mass assignment, missing null checks.\n\n"
                             project_files_content += "".join(lines)
                             project_files_content += f"\n{'='*80}\n\n"
+                            
+                        else:
+                            # Normal size file - full analysis
+                            project_files_content += f"\n{'='*80}\n"
+                            project_files_content += f"FULL FILE: {file_path} ({file_size} lines)\n"
+                            project_files_content += f"{'='*80}\n"
+                            project_files_content += "INSTRUCTION: Scan this ENTIRE file for ALL items in MANDATORY SECURITY CHECKLIST.\n\n"
+                            project_files_content += "".join(lines)
+                            project_files_content += f"\n{'='*80}\n\n"
+                            
                 except Exception as e:
                     logging.warning(f"Could not read file {file_path}: {e}")
+        
+        # Warn user about skipped files
+        if large_files_skipped:
+            print(f"\n{Fore.YELLOW}⚠️  Skipped {len(large_files_skipped)} large file(s):{Style.RESET_ALL}")
+            for file_path, size in large_files_skipped:
+                print(f"   • {file_path} ({size} lines)")
+            print(f"   Only analyzing changes from git diff for these files.\n")
         
         # Step 4: Build prompt
         print("\n📤 Building prompt for LocalAI...")

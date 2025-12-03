@@ -144,6 +144,79 @@ REQUIRED JSON SCHEMA (strict):
   }
 }
 
+CRITICAL: DO NOT wrap your response in any extra objects like "code_review". 
+Return ONLY the structure shown below, starting with the top-level fields.
+
+EXAMPLE OUTPUT (follow this EXACT structure):
+
+{
+  "summary": "Found 2 critical security issues: missing null check and mass assignment vulnerability",
+  "issues": [
+    {
+      "id": "CasesController.php:496:null_check",
+      "file": "CasesController.php",
+      "line": 496,
+      "type": "security",
+      "severity": "critical",
+      "message": "Missing null check before using $case - will crash if record not found",
+      "evidence": {
+        "source": "git_diff",
+        "snippet": "$case = Cases::query()->find($id);\n$case->case_status_id = $status;"
+      },
+      "suggested_fix": {
+        "description": "Use findOrFail() to throw 404 if not found, or add explicit null check",
+        "patch": "$case = Cases::query()->findOrFail($id);\n$case->case_status_id = $status;",
+        "files_touched": ["CasesController.php"]
+      },
+      "confidence": 0.95,
+      "explain": "Calling methods on null object causes fatal error"
+    },
+    {
+      "id": "CasesController.php:626:mass_assignment",
+      "file": "CasesController.php",
+      "line": 626,
+      "type": "security",
+      "severity": "critical",
+      "message": "Mass assignment vulnerability - user can modify any field",
+      "evidence": {
+        "source": "project_files",
+        "snippet": "$case->update($request->all());"
+      },
+      "suggested_fix": {
+        "description": "Use only() to whitelist allowed fields",
+        "patch": "$case->update($request->only(['case_title', 'case_number', 'date']));",
+        "files_touched": ["CasesController.php"]
+      },
+      "confidence": 0.98,
+      "explain": "Mass assignment allows unauthorized field modification"
+    }
+  ],
+  "recommendations": [
+    {
+      "area": "security",
+      "suggestion": "Add null checks before all find() operations",
+      "rationale": "Prevents application crashes and improves error handling",
+      "priority": "high"
+    }
+  ],
+  "meta": {
+    "analyzed_at": "2025-12-03T22:04:41.880209",
+    "tool_versions": {
+      "phpstan": "N/A",
+      "phpcs": "N/A",
+      "phpunit": "N/A",
+      "localai_model": "qwen2.5-coder:7b"
+    },
+    "duration_seconds": 39.47
+  }
+}
+
+IMPORTANT RULES:
+- "issues" MUST be an array of objects, NOT an object with named keys
+- Each issue MUST have ALL required fields: id, file, line, type, severity, message, evidence, suggested_fix, confidence, explain
+- DO NOT add extra wrapper objects
+- DO NOT use conversational text outside the JSON structure
+
 EXAMPLE MINIMAL PROMPT FORMAT:
 
 SYSTEM: <the system prompt above>

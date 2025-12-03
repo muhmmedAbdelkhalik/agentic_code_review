@@ -6,7 +6,7 @@ localai:
   model: "qwen2.5-coder:7b"  # Changed from gemma:2b for better security detection
   temperature: 0.2
   max_tokens: 4000  # Increased from 3000 for more detailed output
-  timeout: 120  # Increased from 60 for larger model
+  timeout: 180  # Increased from 120 to 180 for large files
 
 # PHP Analysis Tools
 tools:
