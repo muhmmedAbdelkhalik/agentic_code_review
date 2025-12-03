@@ -74,4 +74,21 @@ class CasesController extends Controller
         return view('admin.pages.cases.index', compact('case_status', 'case_type'));
     }
 
+    public function storeCaseSession(Request $request)
+    {
+        $request->validate([
+            'case_id' => 'required',
+        ]);
+        $data = $request->only([
+            'case_id',
+            'task_id',
+            'session_details',
+            'court_decision',
+            'next_session_tasks'
+        ]);
+        CaseSession::query()->create($data);
+        return $request->all();
+    }
+
+   
 }
