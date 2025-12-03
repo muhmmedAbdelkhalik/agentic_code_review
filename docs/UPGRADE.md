@@ -294,7 +294,7 @@ nano config.yaml
 
 For detailed solutions to all issues, see:
 
-📖 **[UPGRADE_TROUBLESHOOTING.md](UPGRADE_TROUBLESHOOTING.md)**
+📖 **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
 
 Includes:
 - Automatic fix procedures

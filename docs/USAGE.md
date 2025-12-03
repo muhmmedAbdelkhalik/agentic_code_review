@@ -1,53 +1,36 @@
-# Usage Guide - LocalAI Code Review Agent
+# Usage Guide
 
 Complete guide for using the LocalAI Code Review Agent in your development workflow.
+
+> **Note:** For installation instructions, see the main [README.md](../README.md)
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Configuration](#configuration)
 - [Running Reviews](#running-reviews)
 - [Git Hook Integration](#git-hook-integration)
 - [Understanding Output](#understanding-output)
 - [Advanced Usage](#advanced-usage)
-- [Troubleshooting](#troubleshooting)
 - [Best Practices](#best-practices)
 
 ## Quick Start
 
+After installation, start using the agent:
+
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Start LocalAI
-docker-compose up -d
-
-# 3. Download a model (see docker/localai/README.md)
-mkdir -p models
-cd models
-wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
-mv mistral-7b-instruct-v0.2.Q4_K_M.gguf mistral-7b-instruct.gguf
-cd ..
-
-# 4. Run your first review
+# Run a review on current changes
 python3 review_local.py
 
-# 5. Check the output
+# Review specific commits
+python3 review_local.py --commit-range HEAD~1..HEAD
+
+# View results
 cat .local_review.json
 ```
 
-## Installation
+## Running Reviews
 
-### Prerequisites
-
-- Python 3.10 or higher
-- Docker and Docker Compose
-- Git
-- PHP 7.4+ (for Laravel projects)
-- Composer (for Laravel projects)
-
-### Step 1: Install Python Dependencies
+### Basic Commands
 
 ```bash
 pip install -r requirements.txt

@@ -1,652 +1,360 @@
-# 🤖 Code Review Agent (LocalAI-Powered)
+# 🤖 LocalAI Code Review Agent
 
-A fully local, privacy-preserving **AI-driven code review system** designed to analyze Laravel (or any backend) projects **before creating a Pull Request**.  
-This agent runs directly on each developer’s machine using **LocalAI**, ensuring that **no source code leaves the device**.
+AI-powered code review that runs 100% locally on your machine. Catches security issues, bugs, and performance problems before you push.
 
----
+## ✨ What You Get
 
-## 🚀 Overview
+- **🔐 100% Private**: All code analysis happens locally - nothing leaves your machine
+- **🛡️ Security First**: Detects SQL injection, XSS, mass assignment, and more
+- **⚡ Performance**: Catches N+1 queries and inefficient code
+- **🐛 Bug Prevention**: Finds missing null checks and logic errors
+- **🎯 Laravel-Optimized**: Built specifically for Laravel/PHP projects
+- **🚫 Push Blocking**: Optionally block pushes with critical issues
 
-The **Code Review Agent** automatically reviews code changes on every local commit or push.  
-It analyzes diffs, PHP static analysis results, coding style, and test outputs — then generates a structured JSON review using a **local LLM model**.
+## 📋 Prerequisites
 
-Key goals of this project:
+Before installing, you need:
 
-- ⚡ Enhance code quality early (before PR stage)  
-- 🔐 Keep company source code completely private (local LLM)  
-- 🧠 Provide smart suggestions powered by AI  
-- 🛠 Integrate with Laravel's ecosystem (phpstan, phpcs, phpunit)  
-- 💻 Run directly on each developer's device (Mac, Linux, Windows via WSL)
+- **Ollama** - For running the local LLM
+- **Python 3.8+** - For the agent script
+- **Git** - For version control integration
 
----
+## 🚀 Installation (A to Z)
 
-## ⚡ Quick Install
+### Step 1: Install Ollama
 
-Install in your Laravel/PHP project with one command:
-
+**macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/install.sh | bash -s /path/to/your/project
+brew install ollama
 ```
 
-Or locally:
+**Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Windows:**
+Download from [ollama.com](https://ollama.com/download)
+
+Start Ollama:
+```bash
+ollama serve
+```
+
+### Step 2: Download the AI Model
 
 ```bash
+# Download qwen2.5-coder:7b (~4.7GB, one-time download)
+ollama pull qwen2.5-coder:7b
+
+# Verify it's installed
+ollama list | grep qwen
+```
+
+**Why this model?**
+- Specifically trained for code analysis
+- Excellent security vulnerability detection
+- Runs 100% locally
+- Good balance: ~60 seconds per review
+
+### Step 3: Install the Agent
+
+**Option A: One-Command Install (Recommended)**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/install.sh | bash -s /path/to/your/laravel/project
+```
+
+**Option B: Local Install**
+
+```bash
+# Clone the repository
 git clone https://github.com/muhmmedAbdelkhalik/agentic_code_review.git
 cd agentic_code_review
+
+# Run installer
 ./install.sh /path/to/your/laravel/project
 ```
 
-**That's it!** The agent is now installed and ready to use.
+The installer will:
+- ✅ Check prerequisites
+- ✅ Install Python dependencies
+- ✅ Copy agent files to your project
+- ✅ Install Git pre-push hook
+- ✅ Configure everything
 
-📖 **See [INSTALL.md](INSTALL.md) for detailed installation options.**
-
----
-
-## 🏗 Architecture
-
-```
-Developer Machine
-│
-├── LocalAI Server (Docker or native)
-│     └── Runs a local GGUF/GGML model (Llama, Mistral, Phi...)
-│
-├── review_local.py (Agent Runner)
-│     ├── Collects Git diff
-│     ├── Runs phpstan + phpcs + phpunit
-│     ├── Builds prompt payload
-│     ├── Sends request to LocalAI
-│     └── Saves structured JSON review output
-│
-└── Optional: Git pre-push hook
-      ├── Runs the agent before pushing
-      └── Displays summary in CLI
-```
-
----
-
-## ✨ Features
-
-### ✔ Full Local Privacy  
-Runs a local LLM (LocalAI) — **no code leaves the machine**.
-
-### ✔ Pre-PR Automated Code Review  
-Analyzes code before the developer even opens a PR.
-
-### ✔ Laravel-Oriented Analysis  
-Detects common Laravel and backend issues:
-- Missing validation  
-- Potential N+1 or inefficient queries  
-- Dangerous mass assignment  
-- Migration problems  
-- Eloquent misuse  
-
-### ✔ Static Analysis Integration  
-Runs:
-- **phpstan** — static logic & type errors  
-- **phpcs** — coding standards  
-- **phpunit** — test execution  
-
-### ✔ Structured JSON Output  
-Easy to parse and integrate into CI or Git hooks.
-
-Example:
-```json
-{
-  "summary": "...",
-  "issues": [
-    {
-      "file": "...",
-      "line": 42,
-      "type": "security",
-      "message": "...",
-      "suggested_fix": "...",
-      "confidence": 0.9
-    }
-  ],
-  "recommendations": []
-}
-```
-
-### ✔ Git Hook Ready  
-A pre-push hook can run the agent automatically.
-
----
-
-## 🛠 Requirements
-
-- **Docker** (recommended) or native LocalAI installation
-- **Python 3.10+** with pip
-- **LocalAI model** in GGUF format (Mistral-7B recommended)
-- **Git** for version control
-- **PHP 7.4+** with Composer (for Laravel projects)
-- **PHP Analysis Tools** (optional but recommended):
-  - phpstan  
-  - phpcs (PHP_CodeSniffer)
-  - phpunit  
-
----
-
-## 🎯 Recommended Model Setup
-
-For best security detection, use **qwen2.5-coder:7b** (runs 100% locally):
+### Step 4: Verify Installation
 
 ```bash
-# Download model (one-time, ~4.7GB)
-ollama pull qwen2.5-coder:7b
+cd /path/to/your/laravel/project
 
-# Verify installation
-ollama list | grep qwen2.5-coder
+# Check the agent is installed
+python3 review_local.py --help
 
-# Model will be used automatically after updating config.yaml
+# Should show:
+# usage: review_local.py [-h] [--config CONFIG] [--commit-range COMMIT_RANGE] [--verbose]
 ```
 
-**Why qwen2.5-coder:7b?**
-- ✅ Specifically trained for code analysis
-- ✅ Excellent at detecting security vulnerabilities
-- ✅ Runs 100% locally (no data leaves your machine)
-- ✅ Good balance: 10-15 seconds per review
-- ✅ Much better than smaller models (gemma:2b)
-
-**Alternative Models:**
-- `qwen2.5-coder:3b` - Faster, still better than gemma:2b (~2GB)
-- `codellama:7b` - Meta's code model, good alternative (~3.8GB)
-- `deepseek-coder:6.7b` - Another strong option (~3.8GB)
-
-### 🔄 Upgrading from Old Installation?
-
-If you're already using the agent with `gemma:2b`, upgrade automatically:
+### Step 5: Test It
 
 ```bash
-./upgrade.sh
+# Run your first review
+python3 review_local.py
+
+# View the results
+cat .local_review.json
 ```
 
-📖 **See [UPGRADE.md](UPGRADE.md) for complete upgrade guide.**
+**That's it!** The agent is now installed and will automatically review your code on every `git push`.
 
----
+## 🎯 Quick Start
 
-## ⚡ Quick Start
-
-### 1. Install Dependencies
-
-```bash
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Install PHP tools (for Laravel projects)
-composer require --dev phpstan/phpstan squizlabs/php_codesniffer
-```
-
-### 2. Setup LocalAI
-
-```bash
-# Start LocalAI with Docker Compose
-docker-compose up -d
-
-# Download a model (Mistral-7B recommended)
-mkdir -p models
-cd models
-wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
-mv mistral-7b-instruct-v0.2.Q4_K_M.gguf mistral-7b-instruct.gguf
-cd ..
-
-# Wait for model to load (check logs)
-docker-compose logs -f localai
-```
-
-See [docker/localai/README.md](docker/localai/README.md) for detailed setup instructions and model recommendations.
-
-### 3. Configure the Agent
-
-```bash
-# Copy environment template (optional)
-cp .env.example .env
-
-# Edit configuration if needed
-vim config.yaml
-```
-
-### 4. Run Your First Review
+### Run a Manual Review
 
 ```bash
 # Review current changes
 python3 review_local.py
 
-# Check the output
-cat .local_review.json
-```
-
-### 5. Install Git Hook (Optional)
-
-```bash
-# Install pre-push hook for automatic reviews
-./install_hooks.sh
-```
-
----
-
-## 📖 Usage
-
-### Basic Commands
-
-```bash
-# Review current changes (staged or uncommitted)
-python3 review_local.py
-
-# Review specific commit range
+# Review specific commits
 python3 review_local.py --commit-range HEAD~1..HEAD
 
-# Enable verbose output
+# Verbose output
 python3 review_local.py --verbose
-
-# Use custom config file
-python3 review_local.py --config my-config.yaml
 ```
 
-### Command-Line Options
+### Automatic Reviews (Git Hook)
 
-```
-usage: review_local.py [-h] [--config CONFIG] [--commit-range COMMIT_RANGE] [--verbose]
+The pre-push hook is already installed! Just push normally:
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --config CONFIG       Path to configuration file (default: config.yaml)
-  --commit-range COMMIT_RANGE
-                        Git commit range to analyze (e.g., HEAD~1..HEAD)
-  --verbose             Enable verbose output
+```bash
+git add .
+git commit -m "feat: new feature"
+git push origin main  # Agent runs automatically
 ```
 
-### Output
+### Skip a Review
 
-The agent produces:
+```bash
+# Skip review for one push
+SKIP_REVIEW=1 git push origin main
 
-1. **Terminal Summary**: Color-coded summary with issue counts by severity
-2. **JSON File** (`.local_review.json`): Structured review data with:
-   - Summary of findings
-   - Detailed issues with evidence and suggested fixes
-   - Recommendations for improvement
-   - Metadata (tool versions, duration)
-
-Example terminal output:
-
+# Or use --no-verify
+git push --no-verify origin main
 ```
+
+## ⚙️ Configuration
+
+Edit `config.yaml` in your project:
+
+```yaml
+# Model settings
+localai:
+  model: "qwen2.5-coder:7b"
+  timeout: 120
+  max_tokens: 4000
+
+# Block pushes with critical issues
+review:
+  block_on_critical: true  # Set to false to allow all pushes
+
+# PHP tools
+tools:
+  phpstan:
+    enabled: true
+  phpcs:
+    enabled: true
+  phpunit:
+    enabled: false  # Set to true to run tests
+```
+
+📖 **See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all options**
+
+## 🔍 What It Catches
+
+### Security Issues (Critical)
+- SQL injection vulnerabilities
+- XSS (Cross-Site Scripting)
+- Mass assignment vulnerabilities
+- Missing input validation
+- Insecure direct object references
+
+### Performance Issues (High)
+- N+1 query problems
+- Missing eager loading
+- Inefficient database queries
+- Memory-intensive operations
+
+### Bugs (Critical/High)
+- Missing null checks (crashes)
+- Logic errors
+- Type mismatches
+- Undefined variables
+
+### Code Quality (Medium/Low)
+- PSR-12 violations
+- Missing documentation
+- Code duplication
+- Complexity issues
+
+## 📊 Example Output
+
+```bash
+🤖 Running LocalAI Code Review Agent...
 🚀 Starting LocalAI Code Review Agent...
-
 📝 Collecting git diff...
-   Found changes in 3 file(s)
+   Found changes in 2 file(s)
 
 🔧 Running analysis tools...
    • PHPStan...
    • PHPCS...
-   • PHPUnit...
 
-🤖 Calling LocalAI (mistral-7b-instruct)...
+🤖 Calling LocalAI (qwen2.5-coder:7b)...
 
 ================================================================================
 📋 Code Review Summary
 ================================================================================
 
-Found 3 issues: 1 security concern, 1 performance issue, 1 style violation
-
 🔍 Issues Found: 3
 
-🔴 CRITICAL: 1
-  • app/Http/Controllers/OrderController.php:77
-    Missing input validation on user-provided data
+🔴 CRITICAL: 2
+  • app/Http/Controllers/UserController.php:45
+    SQL injection vulnerability in search query
+
+  • app/Http/Controllers/UserController.php:78
+    Mass assignment vulnerability - use $fillable
 
 🟡 HIGH: 1
-  • app/Http/Controllers/OrderController.php:45
-    Possible N+1 query detected
+  • app/Http/Controllers/UserController.php:23
+    N+1 query detected - use eager loading
 
-🟢 LOW: 1
-  • app/Http/Controllers/OrderController.php:23
-    Method name does not follow PSR-12 convention
-
-💡 Recommendations: 4
-  • [security] Create a dedicated FormRequest class
-  • [tests] Add unit tests for OrderController methods
-
-⏱️  Analysis completed in 12.40s
+⏱️  Analysis completed in 58.32s
 ================================================================================
+
+🚫 BLOCKING: 2 critical issue(s) found
 ```
-
----
-
-## 🔧 Configuration
-
-### config.yaml
-
-Main configuration file:
-
-```yaml
-# LocalAI settings
-localai:
-  url: "http://localhost:8080"
-  model: "mistral-7b-instruct"
-  temperature: 0.2          # Lower = more deterministic
-  max_tokens: 3000          # Max response length
-  timeout: 120              # Request timeout
-
-# PHP analysis tools
-tools:
-  phpstan:
-    enabled: true
-    path: "phpstan"
-    args: ["analyse", "--error-format=json", "--no-progress"]
-  phpcs:
-    enabled: true
-    path: "phpcs"
-    args: ["--report=json", "--standard=PSR12"]
-  phpunit:
-    enabled: true
-    path: "phpunit"
-    args: ["--testdox"]
-
-# Output settings
-output:
-  file: ".local_review.json"
-  log_file: ".local_review.log"
-  verbose: false
-
-# Git settings
-git:
-  diff_context: 5
-  target_branch: "main"
-
-# Review behavior
-review:
-  max_issues: 100
-  block_on_critical: false
-  min_confidence: 0.5
-```
-
-### Environment Variables (.env)
-
-Override config values:
-
-```bash
-LOCALAI_URL=http://localhost:8080
-LOCALAI_MODEL=mistral-7b-instruct
-LOCALAI_TEMPERATURE=0.2
-BLOCK_ON_CRITICAL=false
-VERBOSE=false
-```
-
----
-
-## 🪝 Git Hook Integration
-
-### Install the Hook
-
-```bash
-./install_hooks.sh
-```
-
-This installs a pre-push hook that:
-- Runs automatically before `git push`
-- Displays review summary
-- Optionally blocks push on critical issues
-
-### Skip the Hook
-
-```bash
-# Skip review for a single push
-SKIP_REVIEW=1 git push
-
-# Or use --no-verify
-git push --no-verify
-```
-
-### Block on Critical Issues
-
-Enable in `.env`:
-
-```bash
-BLOCK_ON_CRITICAL=true
-```
-
-Now pushes will be blocked if critical issues are found.
-
----
-
-## 📊 Understanding the Output
-
-### Issue Types
-
-- **security**: Security vulnerabilities (SQL injection, XSS, mass assignment)
-- **performance**: Performance problems (N+1 queries, inefficient code)
-- **style**: Code style violations (PSR-12, naming conventions)
-- **bug**: Logical errors or bugs
-- **test**: Testing issues (missing tests, failing tests)
-- **maintenance**: Maintainability concerns (complexity, duplication)
-
-### Severity Levels
-
-- **critical** 🔴: Must fix immediately (security, data loss)
-- **high** 🟡: Should fix soon (performance, bugs)
-- **medium** 🔵: Should fix eventually (maintainability)
-- **low** 🟢: Nice to fix (style, minor issues)
-
-### JSON Schema
-
-See [schema/review_schema.json](schema/review_schema.json) for the complete output schema.
-
-Example output structure:
-
-```json
-{
-  "summary": "Brief overview of findings",
-  "issues": [
-    {
-      "id": "file:line:hash",
-      "file": "path/to/file.php",
-      "line": 42,
-      "type": "security",
-      "severity": "critical",
-      "message": "Description of the issue",
-      "evidence": {
-        "source": "phpstan",
-        "snippet": "Code excerpt",
-        "extra": "Additional context"
-      },
-      "suggested_fix": {
-        "description": "How to fix",
-        "patch": "Unified diff",
-        "files_touched": ["file.php"]
-      },
-      "confidence": 0.92,
-      "explain": "Why this is an issue"
-    }
-  ],
-  "recommendations": [
-    {
-      "area": "security",
-      "suggestion": "What to do",
-      "rationale": "Why do it",
-      "priority": "high"
-    }
-  ],
-  "meta": {
-    "analyzed_at": "2025-12-02T14:30:45+02:00",
-    "tool_versions": {...},
-    "duration_seconds": 12.4
-  }
-}
-```
-
-See [examples/sample_review.json](examples/sample_review.json) for a complete example.
-
----
-
-## 🧪 Examples and Testing
-
-The `examples/` directory contains:
-
-- **sample_review.json**: Example output showing all issue types
-- **sample_diff.patch**: Sample Laravel code changes for testing
-- **README.md**: Guide to using the examples
-
-Test the agent without a real Laravel project:
-
-```bash
-# Apply sample diff
-git apply examples/sample_diff.patch
-
-# Run review
-python3 review_local.py
-
-# Compare with sample output
-diff .local_review.json examples/sample_review.json
-```
-
----
-
-## 🎯 Why This System Works
-
-✅ **Reduces PR Review Time**: Catches issues before human review  
-✅ **Improves Code Quality**: Consistent, automated feedback  
-✅ **Prevents Issues Early**: Find problems before they reach production  
-✅ **100% Private**: All processing happens locally  
-✅ **No External Dependencies**: Works completely offline  
-✅ **Customizable**: Adapt to your team's standards  
-✅ **Actionable**: Provides specific fixes, not just complaints  
-
----
 
 ## 📚 Documentation
 
-- **[USAGE.md](USAGE.md)**: Complete usage guide with examples
-- **[docker/localai/README.md](docker/localai/README.md)**: LocalAI setup and model recommendations
-- **[examples/README.md](examples/README.md)**: Testing and example files
-- **[schema/review_schema.json](schema/review_schema.json)**: JSON output schema
+- **[Usage Guide](docs/USAGE.md)** - Detailed usage instructions
+- **[Configuration](docs/CONFIGURATION.md)** - All configuration options
+- **[Upgrading](docs/UPGRADE.md)** - Upgrade from older versions
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Changelog](docs/CHANGELOG.md)** - Recent improvements and fixes
 
----
+## 🔄 Upgrading
 
-## 🔍 Troubleshooting
-
-### LocalAI not responding
-
-```bash
-# Check if running
-docker-compose ps
-
-# View logs
-docker-compose logs -f localai
-
-# Restart
-docker-compose restart localai
-```
-
-### Tool not found
+If you're already using an older version with `gemma:2b`:
 
 ```bash
-# Install PHP tools
-composer require --dev phpstan/phpstan squizlabs/php_codesniffer
-
-# Or use absolute paths in config.yaml
-tools:
-  phpstan:
-    path: "/full/path/to/vendor/bin/phpstan"
+cd /path/to/agentic_code_review
+./upgrade.sh
 ```
 
-### Slow performance
+This will:
+- ✅ Download the new model (qwen2.5-coder:7b)
+- ✅ Update configuration
+- ✅ Update prompts for better detection
+- ✅ Improve detection rate from 25% to 100%
 
-- Use a smaller model (Phi-3-Mini)
-- Reduce `max_tokens` in config
-- Increase Docker memory limits
-- Use GPU acceleration if available
+📖 **See [docs/UPGRADE.md](docs/UPGRADE.md) for details**
 
-See [USAGE.md](USAGE.md) for detailed troubleshooting.
+## 🆘 Troubleshooting
 
----
-
-## 🚀 Advanced Usage
-
-### Custom Prompts
-
-Edit `prompts/system_prompt.txt` to customize AI behavior.
-
-### CI/CD Integration
-
-```yaml
-# .github/workflows/code-review.yml
-- name: Run code review
-  run: python3 review_local.py --commit-range origin/main..HEAD
-```
-
-### Multiple Models
-
+### Ollama not running?
 ```bash
-# Test different models
-LOCALAI_MODEL=mistral-7b-instruct python3 review_local.py
-LOCALAI_MODEL=llama-2-7b-chat python3 review_local.py
+# Start Ollama
+ollama serve
+
+# Check if it's running
+curl http://localhost:11434/api/tags
 ```
 
----
+### Model not found?
+```bash
+# Download the model
+ollama pull qwen2.5-coder:7b
 
-## 📈 Project Structure
+# List installed models
+ollama list
+```
+
+### Python dependencies missing?
+```bash
+# Install dependencies
+pip3 install -r requirements.txt
+
+# Or with system packages flag (if needed)
+pip3 install --break-system-packages -r requirements.txt
+```
+
+### Hook not running?
+```bash
+# Check hook is installed
+ls -la .git/hooks/pre-push
+
+# Reinstall if needed
+cp /path/to/agentic_code_review/hooks/pre-push .git/hooks/
+chmod +x .git/hooks/pre-push
+```
+
+📖 **See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more help**
+
+## 🎯 How It Works
 
 ```
-agentic_code_review/
+Developer pushes code
+        ↓
+Pre-push hook triggers
+        ↓
+Agent collects git diff
+        ↓
+Runs PHP tools (phpstan, phpcs)
+        ↓
+Sends to local LLM (Ollama)
+        ↓
+LLM analyzes code
+        ↓
+Returns structured JSON review
+        ↓
+Shows summary in terminal
+        ↓
+Blocks push if critical issues found
+```
+
+**Everything happens on your machine. No code leaves your device.**
+
+## 📦 What Gets Installed
+
+```
+your-laravel-project/
 ├── review_local.py          # Main agent script
 ├── config.yaml              # Configuration
-├── requirements.txt         # Python dependencies
-├── docker-compose.yml       # LocalAI setup
-├── install_hooks.sh         # Git hook installer
 ├── prompts/
-│   └── system_prompt.txt    # AI system prompt
+│   └── system_prompt.txt    # LLM instructions
 ├── schema/
-│   └── review_schema.json   # Output JSON schema
-├── hooks/
-│   └── pre-push            # Git pre-push hook
-├── docker/
-│   └── localai/
-│       └── README.md       # LocalAI setup guide
-├── examples/
-│   ├── sample_review.json  # Example output
-│   ├── sample_diff.patch   # Example diff
-│   └── README.md           # Examples guide
-├── models/                 # LocalAI models (gitignored)
-├── README.md              # This file
-└── USAGE.md              # Detailed usage guide
+│   └── review_schema.json   # Output validation
+└── .git/hooks/
+    └── pre-push            # Git automation
 ```
-
----
 
 ## 🤝 Contributing
 
-Contributions are welcome! Areas for improvement:
-
+Contributions welcome! Areas for improvement:
 - Support for more languages (JavaScript, Python, Go)
 - Additional Laravel-specific rules
 - Performance optimizations
 - Better error handling
-- UI/dashboard for review history
 
----
+## 📄 License
 
-## 📚 License
-
-Internal use only.  
-Check model licensing for LocalAI-compatible LLMs.
-
----
+Internal use only. Check model licensing for Ollama-compatible LLMs.
 
 ## 💬 Support
 
-- **Documentation**: See [USAGE.md](USAGE.md)
-- **Examples**: Check [examples/](examples/)
-- **Issues**: Check logs in `.local_review.log`
-- **LocalAI**: https://localai.io/
+- **Documentation**: [docs/](docs/)
+- **Issues**: Check `.local_review.log` for errors
+- **GitHub**: https://github.com/muhmmedAbdelkhalik/agentic_code_review
 
 ---
 
-## 🎉 Getting Started
-
-1. ✅ Install dependencies: `pip install -r requirements.txt`
-2. ✅ Start LocalAI: `docker-compose up -d`
-3. ✅ Download a model (see [docker/localai/README.md](docker/localai/README.md))
-4. ✅ Run your first review: `python3 review_local.py`
-5. ✅ Install Git hooks: `./install_hooks.sh`
-6. ✅ Read the full guide: [USAGE.md](USAGE.md)
-
-**Happy reviewing! 🚀**
+**Happy coding! 🚀** Your code is now protected by AI-powered review.
