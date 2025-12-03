@@ -65,10 +65,17 @@ MANDATORY SECURITY CHECKLIST - YOU MUST CHECK EVERY FILE FOR:
    - Risk: Script injection, session hijacking
 
 FOR EACH ISSUE FOUND:
-- Report with exact line number
-- Mark severity as CRITICAL or HIGH
-- Include code snippet in evidence
-- Provide specific fix suggestion
+- Report with exact line number from the file
+- Mark severity EXACTLY as specified:
+  * Mass Assignment → severity: "critical"
+  * SQL Injection → severity: "critical"
+  * Missing Null Checks → severity: "critical"
+  * XSS Vulnerabilities → severity: "critical"
+  * N+1 Query Problems → severity: "high"
+  * Missing Input Validation → severity: "high"
+- Include actual code snippet from the file in evidence
+- Provide specific fix with actual code patch
+- Set confidence to 0.9 or higher for security issues
 
 • Include test suggestions when behavior is unclear (unit/integration test cases and where to place them).
 
@@ -146,6 +153,14 @@ REQUIRED JSON SCHEMA (strict):
 
 CRITICAL: DO NOT wrap your response in any extra objects like "code_review". 
 Return ONLY the structure shown below, starting with the top-level fields.
+
+SEVERITY RULES (MANDATORY):
+- SQL Injection = "critical" (NOT "low", NOT "high")
+- Mass Assignment = "critical" (NOT "low", NOT "high")
+- Missing Null Checks = "critical" (NOT "low", NOT "high")
+- XSS = "critical" (NOT "low", NOT "high")
+- N+1 Queries = "high" (NOT "low", NOT "critical")
+- Missing Validation = "high" (NOT "low", NOT "critical")
 
 EXAMPLE OUTPUT (follow this EXACT structure):
 
