@@ -18,6 +18,20 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Temporary directory for downloaded files (will be set later)
+TEMP_DIR=""
+USE_TEMP=false
+
+# Cleanup function
+cleanup() {
+    if [ "$USE_TEMP" = true ] && [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR" 2>/dev/null || true
+    fi
+}
+
+# Register cleanup function to run on exit
+trap cleanup EXIT
+
 # Banner
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
@@ -53,25 +67,117 @@ fi
 echo -e "${GREEN}✅ Target directory: $TARGET_DIR${NC}"
 echo ""
 
+# GitHub repository base URL
+GITHUB_REPO="https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main"
+GITHUB_BRANCH="main"
+
 # Source directory (where this script is located)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SOURCE_DIR="$SCRIPT_DIR"
 
-# If running from a different directory, try to find the agent files
-if [ ! -f "$SOURCE_DIR/review_local.py" ]; then
+
+# Function to download file from GitHub
+download_from_github() {
+    local file_path="$1"
+    local output_path="$2"
+    local url="${GITHUB_REPO}/${file_path}"
+    
+    if curl -sSLf "$url" -o "$output_path" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to setup temporary directory and download files
+setup_source_files() {
     # Check if we're in the agentic_code_review directory
+    if [ -f "$SCRIPT_DIR/review_local.py" ]; then
+        SOURCE_DIR="$SCRIPT_DIR"
+        return 0
+    fi
+    
+    # Check if we're in the current working directory
     if [ -f "$PWD/review_local.py" ]; then
         SOURCE_DIR="$PWD"
-    # Check if agentic_code_review is in the parent directory
-    elif [ -f "$(dirname "$PWD")/agentic_code_review/review_local.py" ]; then
-        SOURCE_DIR="$(dirname "$PWD")/agentic_code_review"
-    # Check common locations
-    elif [ -f "$HOME/projects/ai_engineer/agentic_code_review/review_local.py" ]; then
-        SOURCE_DIR="$HOME/projects/ai_engineer/agentic_code_review"
+        return 0
     fi
-fi
+    
+    # Check if agentic_code_review is in the parent directory
+    if [ -f "$(dirname "$PWD")/agentic_code_review/review_local.py" ]; then
+        SOURCE_DIR="$(dirname "$PWD")/agentic_code_review"
+        return 0
+    fi
+    
+    # Check common locations
+    if [ -f "$HOME/projects/ai_engineer/agentic_code_review/review_local.py" ]; then
+        SOURCE_DIR="$HOME/projects/ai_engineer/agentic_code_review"
+        return 0
+    fi
+    
+    # If not found locally, download from GitHub
+    echo -e "${YELLOW}   📥 Files not found locally, downloading from GitHub...${NC}"
+    TEMP_DIR=$(mktemp -d)
+    USE_TEMP=true
+    SOURCE_DIR="$TEMP_DIR"
+    
+    # Create necessary directories first
+    mkdir -p "$TEMP_DIR/prompts"
+    mkdir -p "$TEMP_DIR/schema"
+    mkdir -p "$TEMP_DIR/hooks"
+    
+    # Download required files
+    local files=(
+        "requirements.txt"
+        "review_local.py"
+        "config.yaml"
+    )
+    
+    local success=true
+    for file in "${files[@]}"; do
+        if ! download_from_github "$file" "$TEMP_DIR/$file"; then
+            echo -e "${RED}   ❌ Failed to download $file from GitHub${NC}"
+            success=false
+        fi
+    done
+    
+    # Download prompts directory
+    if ! download_from_github "prompts/system_prompt.txt" "$TEMP_DIR/prompts/system_prompt.txt"; then
+        echo -e "${RED}   ❌ Failed to download prompts/system_prompt.txt from GitHub${NC}"
+        success=false
+    fi
+    
+    # Download schema directory
+    if ! download_from_github "schema/review_schema.json" "$TEMP_DIR/schema/review_schema.json"; then
+        echo -e "${RED}   ❌ Failed to download schema/review_schema.json from GitHub${NC}"
+        success=false
+    fi
+    
+    # Download hooks
+    if ! download_from_github "hooks/pre-push" "$TEMP_DIR/hooks/pre-push"; then
+        echo -e "${YELLOW}   ⚠${NC} Failed to download hooks/pre-push from GitHub (optional)${NC}"
+    else
+        chmod +x "$TEMP_DIR/hooks/pre-push"
+    fi
+    
+    if [ "$success" = false ]; then
+        echo -e "${RED}❌ Failed to download required files from GitHub${NC}"
+        if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+            rm -rf "$TEMP_DIR"
+        fi
+        exit 1
+    fi
+    
+    return 0
+}
+
+# Setup source files (local or download from GitHub)
+setup_source_files
 
 echo -e "${CYAN}📦 Source directory: $SOURCE_DIR${NC}"
+if [ "$USE_TEMP" = true ]; then
+    echo -e "${YELLOW}   (Using temporary directory with files from GitHub)${NC}"
+fi
 
 echo -e "${CYAN}📋 Installation Steps:${NC}"
 echo ""
@@ -118,7 +224,11 @@ if [ -f "$SOURCE_DIR/requirements.txt" ]; then
         echo -e "${YELLOW}      Run manually: pip3 install -r requirements.txt${NC}"
     fi
 else
-    echo -e "${YELLOW}   ⚠${NC} requirements.txt not found"
+    echo -e "${RED}   ❌ requirements.txt not found${NC}"
+    if [ "$USE_TEMP" = true ] && [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+    exit 1
 fi
 
 echo ""
