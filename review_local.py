@@ -906,8 +906,11 @@ class CodeReviewAgent:
                             project_files_content += f"LARGE FILE: {file_path} ({file_size} lines)\n"
                             project_files_content += f"{'='*80}\n"
                             project_files_content += "INSTRUCTION: This is a large file. Focus on CRITICAL security issues from MANDATORY SECURITY CHECKLIST.\n"
-                            project_files_content += "Priority: SQL injection, mass assignment, missing null checks.\n\n"
-                            project_files_content += "".join(lines)
+                            project_files_content += "Priority: SQL injection, mass assignment, missing null checks.\n"
+                            project_files_content += "IMPORTANT: Use the line numbers shown below for accurate reporting.\n\n"
+                            # Add line numbers to each line
+                            for i, line in enumerate(lines, start=1):
+                                project_files_content += f"{i:4d}| {line}"
                             project_files_content += f"\n{'='*80}\n\n"
                             
                         else:
@@ -915,8 +918,11 @@ class CodeReviewAgent:
                             project_files_content += f"\n{'='*80}\n"
                             project_files_content += f"FULL FILE: {file_path} ({file_size} lines)\n"
                             project_files_content += f"{'='*80}\n"
-                            project_files_content += "INSTRUCTION: Scan this ENTIRE file for ALL items in MANDATORY SECURITY CHECKLIST.\n\n"
-                            project_files_content += "".join(lines)
+                            project_files_content += "INSTRUCTION: Scan this ENTIRE file for ALL items in MANDATORY SECURITY CHECKLIST.\n"
+                            project_files_content += "IMPORTANT: Use the line numbers shown below for accurate reporting.\n\n"
+                            # Add line numbers to each line
+                            for i, line in enumerate(lines, start=1):
+                                project_files_content += f"{i:4d}| {line}"
                             project_files_content += f"\n{'='*80}\n\n"
                             
                 except Exception as e:
