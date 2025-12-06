@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
@@ -625,6 +625,584 @@ class OllamaClient:
         return fixed
 
 
+class HealthChecker:
+    """Validates system health for the code review agent."""
+
+    def __init__(self, config: Config):
+        """
+        Initialize health checker with configuration.
+
+        Args:
+            config: Config instance with loaded settings
+        """
+        self.config = config
+        self.checks = []
+
+    def run_all_checks(self, verbose: bool = False) -> Dict[str, Any]:
+        """
+        Run all health checks.
+
+        Args:
+            verbose: Whether to print detailed output
+
+        Returns:
+            Dict with structure containing status, checks, summary, timestamp, and duration
+        """
+        start_time = time.time()
+
+        # Run all check categories
+        self._check_python_dependencies()
+        self._check_configuration()
+        self._check_ollama_connectivity()
+        self._check_php_tools()
+        self._check_filesystem()
+
+        # Calculate overall status
+        overall_status = self._calculate_status()
+
+        # Build result
+        result = {
+            "status": overall_status,
+            "checks": self.checks,
+            "summary": self._build_summary(),
+            "timestamp": datetime.now().isoformat(),
+            "duration_seconds": round(time.time() - start_time, 2)
+        }
+
+        return result
+
+    def _check_python_dependencies(self):
+        """Check required Python packages."""
+        required_packages = {
+            'requests': ('2.32.0', None, 'HTTP client for Ollama API'),
+            'yaml': ('6.0', 'pyyaml', 'Configuration parsing'),
+            'jsonschema': ('4.20.0', None, 'JSON schema validation'),
+            'colorama': ('0.4.6', None, 'Terminal colors'),
+            'dotenv': ('1.0.0', 'python-dotenv', 'Environment variables')
+        }
+
+        for import_name, (min_version, pip_name, description) in required_packages.items():
+            try:
+                module = __import__(import_name)
+                version = getattr(module, '__version__', 'unknown')
+
+                self.checks.append({
+                    "category": "dependencies",
+                    "name": f"Python package: {pip_name or import_name}",
+                    "status": "pass",
+                    "message": f"Installed (version {version})",
+                    "severity": "info",
+                    "remedy": None
+                })
+            except ImportError:
+                self.checks.append({
+                    "category": "dependencies",
+                    "name": f"Python package: {pip_name or import_name}",
+                    "status": "fail",
+                    "message": f"Not installed - {description}",
+                    "severity": "critical",
+                    "remedy": f"Run: pip3 install {pip_name or import_name}>={min_version}"
+                })
+
+    def _check_configuration(self):
+        """Validate config.yaml and environment overrides."""
+
+        # Check: config.yaml exists
+        config_path = getattr(self.config, 'config_path', 'config.yaml')
+        if not os.path.exists(config_path):
+            self.checks.append({
+                "category": "config",
+                "name": "Configuration file",
+                "status": "warn",
+                "message": f"Config file {config_path} not found (using defaults)",
+                "severity": "warning",
+                "remedy": "Create config.yaml from the default template"
+            })
+        else:
+            self.checks.append({
+                "category": "config",
+                "name": "Configuration file",
+                "status": "pass",
+                "message": f"Found at {config_path}",
+                "severity": "info",
+                "remedy": None
+            })
+
+        # Check: Ollama URL format
+        ollama_url = self.config.get('ollama', 'url')
+        if not ollama_url or not ollama_url.startswith('http'):
+            self.checks.append({
+                "category": "config",
+                "name": "Ollama URL format",
+                "status": "fail",
+                "message": f"Invalid URL: {ollama_url}",
+                "severity": "critical",
+                "remedy": "Set valid URL in config.yaml (e.g., http://localhost:11434)"
+            })
+        else:
+            self.checks.append({
+                "category": "config",
+                "name": "Ollama URL format",
+                "status": "pass",
+                "message": f"Valid URL: {ollama_url}",
+                "severity": "info",
+                "remedy": None
+            })
+
+        # Check: Timeout ranges (0 < timeout <= 600)
+        timeout = self.config.get('ollama', 'timeout', default=180)
+        if not (0 < timeout <= 600):
+            self.checks.append({
+                "category": "config",
+                "name": "Ollama timeout",
+                "status": "warn",
+                "message": f"Timeout {timeout}s is outside recommended range (1-600s)",
+                "severity": "warning",
+                "remedy": "Adjust timeout in config.yaml to a value between 1 and 600"
+            })
+        else:
+            self.checks.append({
+                "category": "config",
+                "name": "Ollama timeout",
+                "status": "pass",
+                "message": f"Timeout: {timeout}s",
+                "severity": "info",
+                "remedy": None
+            })
+
+        # Check: Temperature range (0.0 <= temp <= 1.0)
+        temperature = self.config.get('ollama', 'temperature', default=0.2)
+        if not (0.0 <= temperature <= 1.0):
+            self.checks.append({
+                "category": "config",
+                "name": "Model temperature",
+                "status": "warn",
+                "message": f"Temperature {temperature} is outside range (0.0-1.0)",
+                "severity": "warning",
+                "remedy": "Set temperature between 0.0 and 1.0 in config.yaml"
+            })
+        else:
+            self.checks.append({
+                "category": "config",
+                "name": "Model temperature",
+                "status": "pass",
+                "message": f"Temperature: {temperature}",
+                "severity": "info",
+                "remedy": None
+            })
+
+        # Check: Model name format
+        model_name = self.config.get('ollama', 'model')
+        if not model_name:
+            self.checks.append({
+                "category": "config",
+                "name": "Model name",
+                "status": "fail",
+                "message": "No model specified",
+                "severity": "critical",
+                "remedy": "Set model in config.yaml (e.g., qwen2.5-coder:7b)"
+            })
+        else:
+            self.checks.append({
+                "category": "config",
+                "name": "Model name",
+                "status": "pass",
+                "message": f"Model: {model_name}",
+                "severity": "info",
+                "remedy": None
+            })
+
+    def _check_ollama_connectivity(self):
+        """Test Ollama server connection and model availability."""
+
+        base_url = self.config.get('ollama', 'url')
+        model_name = self.config.get('ollama', 'model')
+
+        # Check: Ollama server reachability
+        try:
+            # Detect if using Ollama native API (port 11434) or OpenAI-compatible (port 8080)
+            if ':11434' in base_url:
+                endpoint = f"{base_url}/api/tags"
+            else:
+                endpoint = f"{base_url}/v1/models"
+
+            response = requests.get(endpoint, timeout=5)
+            response.raise_for_status()
+
+            self.checks.append({
+                "category": "ollama",
+                "name": "Ollama server connectivity",
+                "status": "pass",
+                "message": f"Server responding at {base_url}",
+                "severity": "info",
+                "remedy": None
+            })
+
+            # Check: Model is pulled
+            if ':11434' in base_url:
+                # Ollama native API
+                data = response.json()
+                models = [m['name'] for m in data.get('models', [])]
+
+                if model_name in models:
+                    self.checks.append({
+                        "category": "ollama",
+                        "name": "Model availability",
+                        "status": "pass",
+                        "message": f"Model '{model_name}' is pulled and ready",
+                        "severity": "info",
+                        "remedy": None
+                    })
+                else:
+                    available_str = ', '.join(models[:3]) if models else 'none'
+                    self.checks.append({
+                        "category": "ollama",
+                        "name": "Model availability",
+                        "status": "fail",
+                        "message": f"Model '{model_name}' not found. Available: {available_str}",
+                        "severity": "critical",
+                        "remedy": f"Run: ollama pull {model_name}"
+                    })
+            else:
+                # OpenAI-compatible endpoint - just check connection
+                self.checks.append({
+                    "category": "ollama",
+                    "name": "Model availability",
+                    "status": "pass",
+                    "message": "Using OpenAI-compatible endpoint (cannot verify model)",
+                    "severity": "info",
+                    "remedy": None
+                })
+
+        except requests.exceptions.ConnectionError:
+            self.checks.append({
+                "category": "ollama",
+                "name": "Ollama server connectivity",
+                "status": "fail",
+                "message": f"Cannot connect to {base_url}",
+                "severity": "critical",
+                "remedy": "Start Ollama with: ollama serve"
+            })
+            # Skip model check if server is down
+            self.checks.append({
+                "category": "ollama",
+                "name": "Model availability",
+                "status": "fail",
+                "message": "Cannot check - server not running",
+                "severity": "critical",
+                "remedy": f"Start Ollama first, then run: ollama pull {model_name}"
+            })
+
+        except requests.exceptions.Timeout:
+            self.checks.append({
+                "category": "ollama",
+                "name": "Ollama server connectivity",
+                "status": "warn",
+                "message": f"Server at {base_url} timed out (>5s)",
+                "severity": "warning",
+                "remedy": "Check if Ollama is overloaded or network is slow"
+            })
+
+        except Exception as e:
+            self.checks.append({
+                "category": "ollama",
+                "name": "Ollama server connectivity",
+                "status": "fail",
+                "message": f"Error: {str(e)[:100]}",
+                "severity": "critical",
+                "remedy": "Check Ollama server logs and configuration"
+            })
+
+    def _check_php_tools(self):
+        """Verify PHP analysis tools are available."""
+
+        tools_config = {
+            'phpstan': self.config.get('tools', 'phpstan'),
+            'phpcs': self.config.get('tools', 'phpcs'),
+            'phpunit': self.config.get('tools', 'phpunit')
+        }
+
+        for tool_name, tool_config in tools_config.items():
+            if not tool_config or not tool_config.get('enabled', True):
+                self.checks.append({
+                    "category": "tools",
+                    "name": f"PHP tool: {tool_name}",
+                    "status": "pass",
+                    "message": f"{tool_name} is disabled in config",
+                    "severity": "info",
+                    "remedy": None
+                })
+                continue
+
+            tool_path = tool_config.get('path', tool_name)
+
+            try:
+                # Try to get version
+                result = subprocess.run(
+                    [tool_path, '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode == 0:
+                    version = result.stdout.split('\n')[0].strip() if result.stdout else "unknown"
+                    self.checks.append({
+                        "category": "tools",
+                        "name": f"PHP tool: {tool_name}",
+                        "status": "pass",
+                        "message": f"Found: {version}",
+                        "severity": "info",
+                        "remedy": None
+                    })
+                else:
+                    self.checks.append({
+                        "category": "tools",
+                        "name": f"PHP tool: {tool_name}",
+                        "status": "warn",
+                        "message": f"{tool_name} found but --version failed",
+                        "severity": "warning",
+                        "remedy": f"Verify {tool_name} installation is correct"
+                    })
+
+            except FileNotFoundError:
+                self.checks.append({
+                    "category": "tools",
+                    "name": f"PHP tool: {tool_name}",
+                    "status": "warn",
+                    "message": f"{tool_name} not found at '{tool_path}'",
+                    "severity": "warning",
+                    "remedy": f"Install {tool_name} or disable in config.yaml"
+                })
+
+            except subprocess.TimeoutExpired:
+                self.checks.append({
+                    "category": "tools",
+                    "name": f"PHP tool: {tool_name}",
+                    "status": "warn",
+                    "message": f"{tool_name} --version timed out",
+                    "severity": "warning",
+                    "remedy": f"Check {tool_name} installation"
+                })
+
+    def _check_filesystem(self):
+        """Validate filesystem access."""
+
+        # Check: schema file exists
+        schema_path = "schema/review_schema.json"
+        if os.path.exists(schema_path):
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Review schema file",
+                "status": "pass",
+                "message": f"Found at {schema_path}",
+                "severity": "info",
+                "remedy": None
+            })
+        else:
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Review schema file",
+                "status": "fail",
+                "message": f"Schema file missing: {schema_path}",
+                "severity": "critical",
+                "remedy": "Restore schema/review_schema.json from repository"
+            })
+
+        # Check: system prompt file exists
+        prompt_path = "prompts/system_prompt.txt"
+        if os.path.exists(prompt_path):
+            self.checks.append({
+                "category": "filesystem",
+                "name": "System prompt file",
+                "status": "pass",
+                "message": f"Found at {prompt_path}",
+                "severity": "info",
+                "remedy": None
+            })
+        else:
+            self.checks.append({
+                "category": "filesystem",
+                "name": "System prompt file",
+                "status": "fail",
+                "message": f"Prompt file missing: {prompt_path}",
+                "severity": "critical",
+                "remedy": "Restore prompts/system_prompt.txt from repository"
+            })
+
+        # Check: output directory writable
+        output_file = self.config.get('output', 'file', default='.local_review.json')
+        output_dir = os.path.dirname(output_file) or '.'
+
+        try:
+            # Try to write a test file
+            test_file = os.path.join(output_dir, '.health_check_test')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Output directory writable",
+                "status": "pass",
+                "message": f"Can write to {output_dir}",
+                "severity": "info",
+                "remedy": None
+            })
+
+        except PermissionError:
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Output directory writable",
+                "status": "fail",
+                "message": f"Cannot write to {output_dir}",
+                "severity": "critical",
+                "remedy": f"Fix permissions: chmod +w {output_dir}"
+            })
+
+        except Exception as e:
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Output directory writable",
+                "status": "fail",
+                "message": f"Error testing write access: {str(e)[:100]}",
+                "severity": "critical",
+                "remedy": "Check directory permissions and disk space"
+            })
+
+        # Check: git repository
+        try:
+            result = subprocess.run(
+                ['git', 'rev-parse', '--git-dir'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode == 0:
+                self.checks.append({
+                    "category": "filesystem",
+                    "name": "Git repository",
+                    "status": "pass",
+                    "message": "Running in a git repository",
+                    "severity": "info",
+                    "remedy": None
+                })
+            else:
+                self.checks.append({
+                    "category": "filesystem",
+                    "name": "Git repository",
+                    "status": "warn",
+                    "message": "Not in a git repository",
+                    "severity": "warning",
+                    "remedy": "This tool is designed to run in git repositories"
+                })
+
+        except Exception:
+            self.checks.append({
+                "category": "filesystem",
+                "name": "Git repository",
+                "status": "warn",
+                "message": "Cannot detect git (git command not found)",
+                "severity": "warning",
+                "remedy": "Install git or ensure it's in PATH"
+            })
+
+    def _calculate_status(self) -> str:
+        """Calculate overall health status based on check results."""
+        has_failures = any(check['status'] == 'fail' for check in self.checks)
+        has_warnings = any(check['status'] == 'warn' for check in self.checks)
+
+        if has_failures:
+            return 'unhealthy'
+        elif has_warnings:
+            return 'degraded'
+        else:
+            return 'healthy'
+
+    def _build_summary(self) -> Dict:
+        """Build summary statistics from check results."""
+        total = len(self.checks)
+        passed = sum(1 for check in self.checks if check['status'] == 'pass')
+        warnings = sum(1 for check in self.checks if check['status'] == 'warn')
+        failures = sum(1 for check in self.checks if check['status'] == 'fail')
+
+        return {
+            "total": total,
+            "passed": passed,
+            "warnings": warnings,
+            "failures": failures
+        }
+
+    def print_health_report(self, result: Dict):
+        """Print colored health check report to terminal."""
+
+        status = result['status']
+        summary = result['summary']
+
+        # Header
+        print("\n" + "=" * 80)
+        if status == 'healthy':
+            print(f"{Fore.GREEN}✅ System Health Check - HEALTHY{Style.RESET_ALL}")
+        elif status == 'degraded':
+            print(f"{Fore.YELLOW}⚠️  System Health Check - DEGRADED{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}❌ System Health Check - UNHEALTHY{Style.RESET_ALL}")
+        print("=" * 80 + "\n")
+
+        # Summary stats
+        print(f"Total checks: {summary['total']} | ", end="")
+        print(f"{Fore.GREEN}Passed: {summary['passed']}{Style.RESET_ALL} | ", end="")
+        print(f"{Fore.YELLOW}Warnings: {summary['warnings']}{Style.RESET_ALL} | ", end="")
+        print(f"{Fore.RED}Failed: {summary['failures']}{Style.RESET_ALL}\n")
+
+        # Group checks by category
+        by_category = {}
+        for check in result['checks']:
+            category = check['category']
+            if category not in by_category:
+                by_category[category] = []
+            by_category[category].append(check)
+
+        # Print checks by category
+        category_order = ['dependencies', 'config', 'ollama', 'tools', 'filesystem']
+        category_icons = {
+            'dependencies': '📦',
+            'config': '⚙️',
+            'ollama': '🤖',
+            'tools': '🔧',
+            'filesystem': '📁'
+        }
+
+        for category in category_order:
+            if category not in by_category:
+                continue
+
+            icon = category_icons.get(category, '•')
+            print(f"{Fore.CYAN}{icon} {category.upper()}{Style.RESET_ALL}")
+
+            for check in by_category[category]:
+                if check['status'] == 'pass':
+                    symbol = f"{Fore.GREEN}✓{Style.RESET_ALL}"
+                elif check['status'] == 'warn':
+                    symbol = f"{Fore.YELLOW}⚠{Style.RESET_ALL}"
+                else:
+                    symbol = f"{Fore.RED}✗{Style.RESET_ALL}"
+
+                print(f"  {symbol} {check['name']}: {check['message']}")
+
+                # Show remedy for failures/warnings
+                if check['remedy'] and check['status'] != 'pass':
+                    print(f"    {Fore.CYAN}→ Fix: {check['remedy']}{Style.RESET_ALL}")
+
+            print()
+
+        # Footer
+        print("=" * 80)
+        print(f"{Fore.CYAN}⏱️  Health check completed in {result['duration_seconds']:.2f}s{Style.RESET_ALL}")
+        print("=" * 80 + "\n")
+
+
 class PromptBuilder:
     """Builds prompts for the Ollama model."""
     
@@ -1036,13 +1614,39 @@ def main():
         action='store_true',
         help='Enable verbose output'
     )
-    
+    parser.add_argument(
+        '--health-check',
+        action='store_true',
+        help='Run health check and exit (does not perform code review)'
+    )
+    parser.add_argument(
+        '--health-check-json',
+        action='store_true',
+        help='Run health check and output JSON (for CI/CD integration)'
+    )
+
     args = parser.parse_args()
-    
+
+    # Health check mode - run diagnostics and exit
+    if args.health_check or args.health_check_json:
+        config = Config(config_path=args.config)
+        health_checker = HealthChecker(config)
+        result = health_checker.run_all_checks(verbose=args.verbose)
+
+        if args.health_check_json:
+            # JSON output for CI/CD
+            print(json.dumps(result, indent=2))
+        else:
+            # Human-readable output
+            health_checker.print_health_report(result)
+
+        # Exit with appropriate code
+        sys.exit(0 if result['status'] == 'healthy' else 1)
+
     # Override verbose setting
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     try:
         agent = CodeReviewAgent(config_path=args.config)
         agent.run(commit_range=args.commit_range)

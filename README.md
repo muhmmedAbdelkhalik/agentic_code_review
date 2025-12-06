@@ -88,18 +88,17 @@ The installer will:
 ```bash
 cd /path/to/your/laravel/project
 
-# Check the agent is installed
-python3 review_local.py --help
+# Check system health using the agent CLI
+./agent doctor
 
-# Should show:
-# usage: review_local.py [-h] [--config CONFIG] [--commit-range COMMIT_RANGE] [--verbose]
+# Should show a comprehensive health check report
 ```
 
 ### Step 5: Test It
 
 ```bash
-# Run your first review
-python3 review_local.py
+# Run your first review using the agent CLI
+./agent review
 
 # View the results
 cat .local_review.json
@@ -109,16 +108,41 @@ cat .local_review.json
 
 ## 🎯 Quick Start
 
+### Agent CLI (Recommended)
+
+The `agent` command provides convenient shortcuts for all operations:
+
+```bash
+# Check system health
+./agent doctor
+
+# Run code review
+./agent review
+
+# Review specific commits
+./agent review --range HEAD~1..HEAD
+
+# Install git hooks
+./agent install-hooks
+
+# Run tests
+./agent test
+
+# Show help
+./agent help
+```
+
 ### Run a Manual Review
 
 ```bash
-# Review current changes
+# Using agent CLI (recommended)
+./agent review
+./agent review --range HEAD~1..HEAD
+./agent review --verbose
+
+# Using Python directly (alternative)
 python3 review_local.py
-
-# Review specific commits
 python3 review_local.py --commit-range HEAD~1..HEAD
-
-# Verbose output
 python3 review_local.py --verbose
 ```
 

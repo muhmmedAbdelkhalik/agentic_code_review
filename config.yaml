@@ -39,6 +39,7 @@ review:
   max_issues: 100
   block_on_critical: true
   min_confidence: 0.5
+  run_preflight_check: false  # Run health check before each review (optional)
 
 # Severity Levels (for display)
 severity:

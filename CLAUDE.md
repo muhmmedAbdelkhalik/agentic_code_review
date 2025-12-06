@@ -8,22 +8,72 @@ This is an AI-powered code review agent that runs 100% locally using Ollama/Loca
 
 ## Common Commands
 
+### Quick Start (Using Agent CLI)
+
+The `agent` CLI provides convenient shortcuts:
+
+```bash
+# Health check - validate your setup
+agent doctor
+
+# Run code review
+agent review
+
+# Review specific commit range
+agent review --range HEAD~1..HEAD
+
+# Install git hooks
+agent install-hooks
+
+# Run automated tests
+agent test
+
+# Show help
+agent help
+```
+
 ### Running Reviews
 
 ```bash
-# Run a code review on current changes
+# Using agent CLI (recommended)
+agent review
+agent review --range HEAD~1..HEAD
+agent review --verbose
+
+# Using Python directly (alternative)
 python3 review_local.py
-
-# Review specific commit range
 python3 review_local.py --commit-range HEAD~1..HEAD
-
-# Run with verbose output
 python3 review_local.py --verbose
 
 # View review results
 cat .local_review.json
 cat .local_review.log
 ```
+
+### Health Check
+
+Validate system configuration and dependencies:
+
+```bash
+# Using agent CLI (recommended)
+agent doctor
+agent doctor --json
+
+# Using Python directly (alternative)
+python3 review_local.py --health-check
+python3 review_local.py --health-check-json
+```
+
+The health check validates:
+- Python dependencies (requests, pyyaml, jsonschema, colorama, python-dotenv)
+- Configuration file and settings (URL format, timeout ranges, temperature)
+- Ollama server connectivity and model availability
+- PHP tools (PHPStan, PHPCS, PHPUnit) if enabled
+- Filesystem access (schema files, output directory, git repository)
+
+Exit codes:
+- `0` = Healthy (all critical checks passed)
+- `1` = Degraded (warnings present) or Unhealthy (critical failures)
 
 ### Git Hook Integration
 
@@ -45,8 +95,13 @@ git push --no-verify origin main
 # Install Python dependencies
 pip3 install -r requirements.txt
 
+# Check system health
+agent doctor
+
 # Run automatic tests (tests against PHP test files)
-./auto_test.sh
+agent test
+# OR
+./tests/scripts/auto_test.sh
 
 # Check Ollama is running
 curl http://localhost:11434/api/tags
@@ -61,7 +116,10 @@ ollama pull qwen2.5-coder:7b
 ### Installation
 
 ```bash
-# Install into a target Laravel/PHP project
+# Install git hooks using agent CLI
+agent install-hooks
+
+# OR install into a target Laravel/PHP project
 ./install.sh /path/to/target/project
 
 # Install Git hooks in current project
@@ -243,3 +301,44 @@ The agent uses **qwen2.5-coder:7b** by default (replaces older gemma:2b):
 - JSON schema validation prevents malformed LLM outputs from breaking the workflow
 - Pre-push hook uses Python inline scripts to parse JSON (no jq dependency)
 - Review failures (script errors) don't block pushes unless critical issues are in .local_review.json
+
+## Troubleshooting
+
+### Use Health Check First
+When encountering issues, always run the health check first:
+```bash
+python3 review_local.py --health-check
+```
+This will identify most configuration problems and provide actionable remediation steps.
+
+### Common Issues
+
+**Ollama Not Running**
+```
+❌ Ollama server connectivity: Cannot connect to http://localhost:11434
+→ Fix: Start Ollama with: ollama serve
+```
+
+**Model Not Pulled**
+```
+❌ Model availability: Model 'qwen2.5-coder:7b' not found
+→ Fix: Run: ollama pull qwen2.5-coder:7b
+```
+
+**PHP Tools Missing**
+```
+⚠ PHP tool: phpstan: phpstan not found at 'phpstan'
+→ Fix: Install phpstan or disable in config.yaml
+```
+Note: PHP tools are optional - the agent can run with Ollama alone.
+
+**Permission Errors**
+```
+❌ Output directory writable: Cannot write to .
+→ Fix: Fix permissions: chmod +w .
+```
+
+**Configuration Issues**
+- Invalid URL format: Ensure `ollama.url` starts with `http://` or `https://`
+- Timeout out of range: Keep between 1-600 seconds
+- Temperature out of range: Keep between 0.0-1.0

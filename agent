@@ -1,0 +1,132 @@
+#!/bin/bash
+#
+# Agent CLI - Convenient wrapper for the AI Code Review Agent
+#
+# Usage:
+#   agent doctor              - Run health check
+#   agent review              - Run code review
+#   agent review --range <r>  - Review specific commit range
+#   agent help                - Show help
+#
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REVIEW_SCRIPT="$SCRIPT_DIR/review_local.py"
+
+# Check if review_local.py exists
+if [ ! -f "$REVIEW_SCRIPT" ]; then
+    echo -e "${RED}Error: review_local.py not found at $REVIEW_SCRIPT${NC}"
+    exit 1
+fi
+
+# Show usage
+show_help() {
+    echo ""
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║              AI Code Review Agent - CLI Helper                   ║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${GREEN}Usage:${NC}"
+    echo ""
+    echo -e "  ${CYAN}agent doctor${NC}                    Run health check"
+    echo -e "  ${CYAN}agent doctor --json${NC}             Health check with JSON output"
+    echo -e "  ${CYAN}agent review${NC}                    Run code review on current changes"
+    echo -e "  ${CYAN}agent review --range <range>${NC}    Review specific commit range"
+    echo -e "  ${CYAN}agent review --verbose${NC}          Run review with verbose output"
+    echo -e "  ${CYAN}agent install-hooks${NC}             Install git pre-push hook"
+    echo -e "  ${CYAN}agent test${NC}                      Run automated tests"
+    echo -e "  ${CYAN}agent help${NC}                      Show this help message"
+    echo ""
+    echo -e "${GREEN}Examples:${NC}"
+    echo ""
+    echo -e "  ${YELLOW}agent doctor${NC}                           # Check system health"
+    echo -e "  ${YELLOW}agent review${NC}                           # Review staged changes"
+    echo -e "  ${YELLOW}agent review --range HEAD~1..HEAD${NC}      # Review last commit"
+    echo -e "  ${YELLOW}agent review --range main..feature${NC}     # Review feature branch"
+    echo ""
+    echo -e "${GREEN}Configuration:${NC}"
+    echo ""
+    echo -e "  Edit ${CYAN}config.yaml${NC} to customize settings"
+    echo -e "  Use ${CYAN}.env${NC} file for environment-specific overrides"
+    echo ""
+}
+
+# Parse command
+COMMAND="${1:-help}"
+shift || true
+
+case "$COMMAND" in
+    doctor)
+        # Health check command
+        if [ "$1" = "--json" ]; then
+            python3 "$REVIEW_SCRIPT" --health-check-json
+        else
+            python3 "$REVIEW_SCRIPT" --health-check
+        fi
+        ;;
+
+    review)
+        # Code review command
+        ARGS=()
+
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --range)
+                    ARGS+=("--commit-range" "$2")
+                    shift 2
+                    ;;
+                --verbose)
+                    ARGS+=("--verbose")
+                    shift
+                    ;;
+                *)
+                    echo -e "${RED}Unknown option: $1${NC}"
+                    echo "Run 'agent help' for usage"
+                    exit 1
+                    ;;
+            esac
+        done
+
+        python3 "$REVIEW_SCRIPT" "${ARGS[@]}"
+        ;;
+
+    install-hooks)
+        # Install git hooks
+        if [ -f "$SCRIPT_DIR/install_hooks.sh" ]; then
+            "$SCRIPT_DIR/install_hooks.sh"
+        else
+            echo -e "${RED}Error: install_hooks.sh not found${NC}"
+            exit 1
+        fi
+        ;;
+
+    test)
+        # Run automated tests
+        if [ -f "$SCRIPT_DIR/tests/scripts/auto_test.sh" ]; then
+            "$SCRIPT_DIR/tests/scripts/auto_test.sh" "$@"
+        else
+            echo -e "${RED}Error: auto_test.sh not found${NC}"
+            exit 1
+        fi
+        ;;
+
+    help|--help|-h)
+        show_help
+        ;;
+
+    *)
+        echo -e "${RED}Unknown command: $COMMAND${NC}"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
