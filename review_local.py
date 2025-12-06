@@ -676,7 +676,7 @@ CRITICAL FORMATTING RULES:
 4. "issues" is an ARRAY of objects: [{"id": "...", "file": "...", ...}, ...]
 5. NOT an object with named keys like {"issue1": {...}, "issue2": {...}}
 6. Each issue MUST have all required fields (see example above)
-7. If you cannot analyze properly, return: {"summary": "File too large for analysis", "issues": [], "recommendations": [], "meta": {...}}
+7. You MUST analyze the code. DO NOT skip analysis. Even if files are large, focus on CRITICAL security issues from the MANDATORY SECURITY CHECKLIST.
 
 Your JSON response (start with opening brace):
 """
