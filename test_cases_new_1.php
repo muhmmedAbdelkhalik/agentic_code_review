@@ -90,5 +90,14 @@ class TestBlockPushController extends Controller
         $User = User::find($id);
         return response()->json($User);
     }
+
+    /**
+     * LOW: Code style issue - snake_case method name
+     */
+    public function get_user_data3($id)
+    {
+        $User = User::find($id);
+        return response()->json($User);
+    }
 }
 
