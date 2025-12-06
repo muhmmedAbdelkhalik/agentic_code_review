@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Install Git hooks for LocalAI Code Review Agent
+# Install Git hooks for AI Code Review Agent
 #
 # This script installs the pre-push hook that runs code review before pushing.
 #
@@ -54,8 +54,9 @@ echo "  • To skip review: SKIP_REVIEW=1 git push"
 echo "  • To block on critical issues: Set BLOCK_ON_CRITICAL=true in .env"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
-echo "  1. Make sure LocalAI is running: docker-compose up -d"
-echo "  2. Test the hook: git push (or make a test commit)"
-echo "  3. Check the review output in .local_review.json"
+echo "  1. Make sure Ollama is running: ollama serve"
+echo "  2. Ensure model is available: ollama pull qwen2.5-coder:7b"
+echo "  3. Test the hook: git push (or make a test commit)"
+echo "  4. Check the review output in .local_review.json"
 echo ""
 

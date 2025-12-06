@@ -130,9 +130,10 @@ public function getOrders() // camelCase (PSR-12)
 
 To verify the agent works correctly:
 
-1. **Start LocalAI**:
+1. **Start Ollama**:
    ```bash
-   docker-compose up -d
+   ollama serve
+   ollama pull qwen2.5-coder:7b
    ```
 
 2. **Apply sample diff**:
@@ -181,8 +182,8 @@ With the sample diff:
 - **PHPStan**: ~2-3 seconds
 - **PHPCS**: ~1-2 seconds
 - **PHPUnit**: ~3-5 seconds (if tests exist)
-- **LocalAI inference**: ~5-10 seconds (first run)
-- **Total**: ~12-20 seconds
+- **Ollama inference**: ~40-60 seconds (qwen2.5-coder:7b)
+- **Total**: ~50-70 seconds
 
-Subsequent runs are faster due to model caching.
+Subsequent runs may be faster depending on system resources and model caching.
 

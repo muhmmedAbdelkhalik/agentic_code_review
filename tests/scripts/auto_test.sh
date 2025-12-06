@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Project directory
 PROJECT_DIR="/Users/abdelkhalik/projects/ai_engineer/agentic_code_review"
-TEST_FILE="test_code.php"
+TEST_FILE="tests/php/test_block_push.php"
 
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
@@ -177,7 +177,7 @@ echo -e "${CYAN}═════════════════════�
 echo ""
 echo -e "   To commit and push these changes:"
 echo ""
-echo -e "   ${YELLOW}git add test_code.php${NC}"
+echo -e "   ${YELLOW}git add tests/php/test_block_push.php${NC}"
 echo -e "   ${YELLOW}git commit -m \"test: automated code review test\"${NC}"
 echo -e "   ${YELLOW}git push origin main${NC}"
 echo ""

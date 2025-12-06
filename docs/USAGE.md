@@ -1,6 +1,6 @@
 # Usage Guide
 
-Complete guide for using the LocalAI Code Review Agent in your development workflow.
+Complete guide for using the AI Code Review Agent with Ollama in your development workflow.
 
 > **Note:** For installation instructions, see the main [README.md](../README.md)
 
@@ -57,19 +57,22 @@ composer require --dev squizlabs/php_codesniffer
 composer require --dev phpunit/phpunit
 ```
 
-### Step 3: Setup LocalAI
+### Step 3: Setup Ollama
 
-See [docker/localai/README.md](docker/localai/README.md) for detailed LocalAI setup instructions.
+Install and start Ollama with the qwen2.5-coder model:
 
 ```bash
-# Start LocalAI
-docker-compose up -d
+# Install Ollama (if not already installed)
+# Visit https://ollama.ai for installation instructions
 
-# Wait for model to load (check logs)
-docker-compose logs -f localai
+# Start Ollama server
+ollama serve
+
+# Pull the code review model (in a new terminal)
+ollama pull qwen2.5-coder:7b
 
 # Verify it's running
-curl http://localhost:8080/readyz
+curl http://localhost:11434/api/tags
 ```
 
 ### Step 4: Configure the Agent
@@ -89,12 +92,12 @@ vim config.yaml
 The main configuration file controls all aspects of the agent:
 
 ```yaml
-# LocalAI settings
+# Ollama settings
 localai:
-  url: "http://localhost:8080"
-  model: "mistral-7b-instruct"
+  url: "http://localhost:11434"
+  model: "qwen2.5-coder:7b"
   temperature: 0.2          # Lower = more deterministic
-  max_tokens: 3000          # Max response length
+  max_tokens: 4000          # Max response length
   timeout: 120              # Request timeout in seconds
 
 # PHP analysis tools
@@ -137,11 +140,11 @@ review:
 Environment variables override config.yaml settings:
 
 ```bash
-# LocalAI
-LOCALAI_URL=http://localhost:8080
-LOCALAI_MODEL=mistral-7b-instruct
+# Ollama
+LOCALAI_URL=http://localhost:11434
+LOCALAI_MODEL=qwen2.5-coder:7b
 LOCALAI_TEMPERATURE=0.2
-LOCALAI_MAX_TOKENS=3000
+LOCALAI_MAX_TOKENS=4000
 
 # Tool paths (if not in PATH)
 PHPSTAN_PATH=/usr/local/bin/phpstan
@@ -209,7 +212,7 @@ The agent analyzes:
    ↓
 3. 📤 Build prompt with all inputs
    ↓
-4. 🤖 Send to LocalAI
+4. 🤖 Send to Ollama
    ↓
 5. ✅ Validate JSON response
    ↓
@@ -280,9 +283,9 @@ Now pushes will be blocked if critical issues are found:
    • PHPCS...
    • PHPUnit...
 
-📤 Building prompt for LocalAI...
+📤 Building prompt for Ollama...
 
-🤖 Calling LocalAI (mistral-7b-instruct)...
+🤖 Calling Ollama (qwen2.5-coder:7b)...
 
 ✅ Validating review output...
 
@@ -363,7 +366,7 @@ The JSON file contains structured data:
       "phpstan": "1.10.50",
       "phpcs": "3.7.2",
       "phpunit": "9.6.15",
-      "localai_model": "mistral-7b-instruct"
+      "localai_model": "qwen2.5-coder:7b"
     },
     "duration_seconds": 12.4
   }
@@ -431,16 +434,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
-      - name: Setup LocalAI
-        run: docker-compose up -d
-      
+
+      - name: Setup Ollama
+        run: |
+          curl -fsSL https://ollama.ai/install.sh | sh
+          ollama serve &
+          ollama pull qwen2.5-coder:7b
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      
+
       - name: Run code review
         run: python3 review_local.py --commit-range origin/main..HEAD
-      
+
       - name: Upload review
         uses: actions/upload-artifact@v2
         with:
@@ -474,32 +480,32 @@ tools:
 
 ### Multiple Models
 
-Test different models:
+Test different Ollama models:
 
 ```bash
-# Use Mistral
-LOCALAI_MODEL=mistral-7b-instruct python3 review_local.py
+# Use qwen2.5-coder (recommended)
+LOCALAI_MODEL=qwen2.5-coder:7b python3 review_local.py
 
-# Use Llama
-LOCALAI_MODEL=llama-2-7b-chat python3 review_local.py
+# Use deepseek-coder (alternative)
+LOCALAI_MODEL=deepseek-coder:6.7b python3 review_local.py
 
-# Use Phi (faster)
-LOCALAI_MODEL=phi-3-mini python3 review_local.py
+# Use codellama (faster)
+LOCALAI_MODEL=codellama:7b python3 review_local.py
 ```
 
 ## Troubleshooting
 
-### LocalAI Connection Errors
+### Ollama Connection Errors
 
 ```
-❌ Could not connect to LocalAI at http://localhost:8080
+❌ Could not connect to Ollama at http://localhost:11434
 ```
 
 **Solutions**:
-1. Check if LocalAI is running: `docker-compose ps`
-2. Start LocalAI: `docker-compose up -d`
-3. Check logs: `docker-compose logs localai`
-4. Verify endpoint: `curl http://localhost:8080/readyz`
+1. Check if Ollama is running: `ps aux | grep ollama`
+2. Start Ollama: `ollama serve`
+3. Check available models: `ollama list`
+4. Verify endpoint: `curl http://localhost:11434/api/tags`
 
 ### Tool Not Found Errors
 
@@ -519,20 +525,20 @@ LOCALAI_MODEL=phi-3-mini python3 review_local.py
 ```
 
 **Solutions**:
-1. Check LocalAI logs: `docker-compose logs localai`
+1. Check Ollama logs: `journalctl -u ollama -f` (on Linux) or check console output
 2. Increase max_tokens: `max_tokens: 4000`
 3. Lower temperature: `temperature: 0.1`
-4. Try a different model
+4. Try a different model (see Multiple Models section)
 5. Check `.local_review.log` for details
 
 ### Slow Performance
 
 **Solutions**:
-1. Use smaller model (Phi-3-Mini)
-2. Reduce context size in docker-compose.yml
-3. Increase CPU/memory limits
-4. Use GPU acceleration (if available)
-5. Reduce diff context: `git.diff_context: 3`
+1. Use smaller/faster model: `ollama pull codellama:7b`
+2. Use GPU acceleration (if available): Ollama automatically uses GPU when available
+3. Reduce diff context: `git.diff_context: 3`
+4. Close other Ollama instances
+5. Increase system resources available to Ollama
 
 ### No Changes Detected
 
@@ -576,11 +582,14 @@ Install the pre-push hook to catch issues before they reach the remote:
 
 ### 4. Keep Models Updated
 
-Update LocalAI and models regularly:
+Update Ollama and models regularly:
 
 ```bash
-docker-compose pull
-# Download latest model versions
+# Update Ollama itself
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull latest model version
+ollama pull qwen2.5-coder:7b
 ```
 
 ### 5. Customize for Your Team
@@ -623,7 +632,7 @@ cat .local_review.json | jq '.meta.duration_seconds'
 
 - Check logs: `.local_review.log`
 - Review examples: `examples/`
-- LocalAI docs: https://localai.io/
+- Ollama docs: https://ollama.ai/
 - GitHub issues: [Create an issue]
 
 ## Next Steps
