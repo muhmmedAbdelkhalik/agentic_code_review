@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LocalAI Code Review Agent
+Ollama Code Review Agent
 A privacy-preserving code review system that runs entirely on the developer's machine.
 """
 
@@ -48,12 +48,12 @@ class Config:
     def _default_config(self) -> Dict:
         """Return default configuration."""
         return {
-            'localai': {
-                'url': 'http://localhost:8080',
-                'model': 'mistral-7b-instruct',
+            'ollama': {
+                'url': 'http://localhost:11434',
+                'model': 'qwen2.5-coder:7b',
                 'temperature': 0.2,
-                'max_tokens': 3000,
-                'timeout': 120
+                'max_tokens': 4000,
+                'timeout': 180
             },
             'tools': {
                 'phpstan': {'enabled': True, 'path': 'phpstan', 'args': ['analyse', '--error-format=json', '--no-progress']},
@@ -78,12 +78,12 @@ class Config:
     
     def _override_from_env(self):
         """Override config values from environment variables."""
-        if os.getenv('LOCALAI_URL'):
-            self.config['localai']['url'] = os.getenv('LOCALAI_URL')
-        if os.getenv('LOCALAI_MODEL'):
-            self.config['localai']['model'] = os.getenv('LOCALAI_MODEL')
-        if os.getenv('LOCALAI_TEMPERATURE'):
-            self.config['localai']['temperature'] = float(os.getenv('LOCALAI_TEMPERATURE'))
+        if os.getenv('OLLAMA_URL'):
+            self.config['ollama']['url'] = os.getenv('OLLAMA_URL')
+        if os.getenv('OLLAMA_MODEL'):
+            self.config['ollama']['model'] = os.getenv('OLLAMA_MODEL')
+        if os.getenv('OLLAMA_TEMPERATURE'):
+            self.config['ollama']['temperature'] = float(os.getenv('OLLAMA_TEMPERATURE'))
         if os.getenv('OUTPUT_FILE'):
             self.config['output']['file'] = os.getenv('OUTPUT_FILE')
         if os.getenv('VERBOSE'):
@@ -267,20 +267,20 @@ class ToolRunner:
             return "unknown"
 
 
-class LocalAIClient:
-    """Client for interacting with LocalAI API."""
+class OllamaClient:
+    """Client for interacting with Ollama API."""
     
     def __init__(self, config: Config):
         self.config = config
-        self.base_url = config.get('localai', 'url')
-        self.model = config.get('localai', 'model')
-        self.temperature = config.get('localai', 'temperature', default=0.2)
-        self.max_tokens = config.get('localai', 'max_tokens', default=3000)
-        self.timeout = config.get('localai', 'timeout', default=120)
+        self.base_url = config.get('ollama', 'url')
+        self.model = config.get('ollama', 'model')
+        self.temperature = config.get('ollama', 'temperature', default=0.2)
+        self.max_tokens = config.get('ollama', 'max_tokens', default=3000)
+        self.timeout = config.get('ollama', 'timeout', default=120)
     
     def generate_review(self, prompt: str, max_retries: int = 3) -> Dict:
         """
-        Send prompt to LocalAI/Ollama and get review response.
+        Send prompt to Ollama/Ollama and get review response.
         
         Args:
             prompt: The complete prompt to send
@@ -306,7 +306,7 @@ class LocalAIClient:
         
         for attempt in range(max_retries):
             try:
-                logging.info(f"Sending request to LocalAI (attempt {attempt + 1}/{max_retries})...")
+                logging.info(f"Sending request to Ollama (attempt {attempt + 1}/{max_retries})...")
                 
                 response = requests.post(
                     url,
@@ -325,7 +325,7 @@ class LocalAIClient:
                     # Try to parse as JSON
                     return self._parse_json_response(generated_text)
                 else:
-                    logging.error("Unexpected response format from LocalAI")
+                    logging.error("Unexpected response format from Ollama")
                     if attempt < max_retries - 1:
                         time.sleep(2 ** attempt)  # Exponential backoff
                         continue
@@ -339,14 +339,14 @@ class LocalAIClient:
                 return {}
             
             except requests.exceptions.ConnectionError:
-                logging.error(f"Could not connect to LocalAI at {self.base_url}")
+                logging.error(f"Could not connect to Ollama at {self.base_url}")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                     continue
                 return {}
             
             except Exception as e:
-                logging.error(f"Error calling LocalAI: {e}")
+                logging.error(f"Error calling Ollama: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                     continue
@@ -626,7 +626,7 @@ class LocalAIClient:
 
 
 class PromptBuilder:
-    """Builds prompts for the LocalAI model."""
+    """Builds prompts for the Ollama model."""
     
     def __init__(self, system_prompt_path: str = "prompts/system_prompt.txt"):
         self.system_prompt = self._load_system_prompt(system_prompt_path)
@@ -648,7 +648,7 @@ class PromptBuilder:
         phpunit_output: str,
         project_files: Optional[str] = None
     ) -> str:
-        """Build complete prompt for LocalAI."""
+        """Build complete prompt for Ollama."""
         
         user_content = f"""---DIFF---
 {git_diff if git_diff else "No changes detected"}
@@ -815,7 +815,7 @@ class CodeReviewAgent:
             context_lines=self.config.get('git', 'diff_context', default=5)
         )
         self.tool_runner = ToolRunner(self.config)
-        self.localai_client = LocalAIClient(self.config)
+        self.ollama_client = OllamaClient(self.config)
         self.prompt_builder = PromptBuilder()
         self.validator = ReviewValidator()
         self.printer = ReviewPrinter()
@@ -848,7 +848,7 @@ class CodeReviewAgent:
         """
         start_time = time.time()
         
-        print(f"{Fore.CYAN}🚀 Starting LocalAI Code Review Agent...{Style.RESET_ALL}\n")
+        print(f"{Fore.CYAN}🚀 Starting Ollama Code Review Agent...{Style.RESET_ALL}\n")
         
         # Step 1: Collect git diff
         print("📝 Collecting git diff...")
@@ -936,7 +936,7 @@ class CodeReviewAgent:
             print(f"   Only analyzing changes from git diff for these files.\n")
         
         # Step 4: Build prompt
-        print("\n📤 Building prompt for LocalAI...")
+        print("\n📤 Building prompt for Ollama...")
         prompt = self.prompt_builder.build_prompt(
             git_diff=git_diff,
             phpstan_output=phpstan_output,
@@ -945,12 +945,12 @@ class CodeReviewAgent:
             project_files=project_files_content if project_files_content else None
         )
         
-        # Step 5: Call LocalAI
-        print(f"\n🤖 Calling LocalAI ({self.config.get('localai', 'model')})...")
-        review = self.localai_client.generate_review(prompt)
+        # Step 5: Call Ollama
+        print(f"\n🤖 Calling Ollama ({self.config.get('ollama', 'model')})...")
+        review = self.ollama_client.generate_review(prompt)
         
         if not review:
-            print(f"{Fore.RED}❌ Failed to get review from LocalAI{Style.RESET_ALL}")
+            print(f"{Fore.RED}❌ Failed to get review from Ollama{Style.RESET_ALL}")
             return self._empty_review(start_time)
         
         # Step 5: Add metadata
@@ -961,7 +961,7 @@ class CodeReviewAgent:
                 'phpstan': phpstan_version,
                 'phpcs': phpcs_version,
                 'phpunit': phpunit_version,
-                'localai_model': self.config.get('localai', 'model')
+                'ollama_model': self.config.get('ollama', 'model')
             },
             'duration_seconds': round(duration, 2)
         }
@@ -1002,7 +1002,7 @@ class CodeReviewAgent:
                     'phpstan': 'N/A',
                     'phpcs': 'N/A',
                     'phpunit': 'N/A',
-                    'localai_model': self.config.get('localai', 'model')
+                    'ollama_model': self.config.get('ollama', 'model')
                 },
                 'duration_seconds': round(time.time() - start_time, 2)
             }
@@ -1020,7 +1020,7 @@ class CodeReviewAgent:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='LocalAI Code Review Agent - Privacy-preserving code review'
+        description='Ollama Code Review Agent - Privacy-preserving code review'
     )
     parser.add_argument(
         '--config',

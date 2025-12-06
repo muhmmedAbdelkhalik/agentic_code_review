@@ -1,12 +1,12 @@
-# LocalAI Code Review Agent Configuration
+# AI Code Review Agent Configuration
 
-# Ollama Server Settings (switched from LocalAI for better CPU performance)
-localai:
+# Ollama Server Settings
+ollama:
   url: "http://localhost:11434"
-  model: "qwen2.5-coder:7b"  # Changed from gemma:2b for better security detection
+  model: "qwen2.5-coder:7b"
   temperature: 0.2
-  max_tokens: 4000  # Increased from 3000 for more detailed output
-  timeout: 180  # Increased from 120 to 180 for large files
+  max_tokens: 4000
+  timeout: 180
 
 # PHP Analysis Tools
 tools:
@@ -31,14 +31,14 @@ output:
 
 # Git Settings
 git:
-  diff_context: 5  # lines of context around changes
-  target_branch: "main"  # default branch to compare against
+  diff_context: 5
+  target_branch: "main"
 
 # Review Behavior
 review:
   max_issues: 100
-  block_on_critical: true  # set to true to block push on critical issues
-  min_confidence: 0.5  # minimum confidence to report an issue
+  block_on_critical: true
+  min_confidence: 0.5
 
 # Severity Levels (for display)
 severity:
@@ -54,4 +54,3 @@ severity:
   low:
     color: "green"
     symbol: "🟢"
-
