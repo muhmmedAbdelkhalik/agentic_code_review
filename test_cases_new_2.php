@@ -18,86 +18,19 @@ class TestBlockPushController extends Controller
         $user->update($request->all()); // CRITICAL: Allows modifying any field
         return response()->json(['success' => true]);
     }
-
     /**
-     * CRITICAL: SQL injection vulnerability
+     * Demonstrates basic input validation on user-provided search query
      */
     public function searchUsers(Request $request)
     {
         $search = $request->input('search');
-        $users = DB::select("SELECT * FROM users WHERE name LIKE '%{$search}%'");
-        return response()->json($users);
-    }
-
-    /**
-     * CRITICAL: Missing null check
-     */
-    public function deleteUser($id)
-    {
-        $user = User::find($id);
-        $user->delete(); // CRITICAL: Will crash if $user is null
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * HIGH: N+1 query problem
-     */
-    public function getUserPosts($userId)
-    {
-        $user = User::find($userId);
-        $posts = $user->posts;
-        
-        $result = [];
-        foreach ($posts as $post) {
-            $result[] = [
-                'title' => $post->title,
-                'author' => $post->user->name, // HIGH: N+1 query
-            ];
+        // Simple input validation: only allow alphanumeric and spaces, and limit length
+        if (!is_string($search) || strlen($search) > 50 || !preg_match('/^[\w\s]+$/u', $search)) {
+            return response()->json(['error' => 'Invalid search input.'], 400);
         }
-        
-        return response()->json($result);
-    }
 
-    /**
-     * HIGH: Missing input validation
-     */
-    public function createPost(Request $request)
-    {
-        $post = Post::create([
-            'title' => $request->input('title'),
-            'content' => $request->input('content'),
-        ]);
-        return response()->json($post);
-    }
-
-    /**
-     * MEDIUM: Code duplication
-     */
-    public function getUserProfile($userId)
-    {
-        $user = User::find($userId);
-        return response()->json([
-            'name' => $user->first_name . ' ' . $user->last_name,
-            'email' => $user->email,
-        ]);
-    }
-
-    /**
-     * LOW: Code style issue - snake_case method name
-     */
-    public function get_user_data($id)
-    {
-        $User = User::find($id);
-        return response()->json($User);
-    }
-
-    /**
-     * LOW: Code style issue - snake_case method name
-     */
-    public function get_user_data2($id)
-    {
-        $User = User::find($id);
-        return response()->json($User);
+        $users = User::where('name', 'like', '%' . $search . '%')->get();
+        return response()->json($users);
     }
 }
 
