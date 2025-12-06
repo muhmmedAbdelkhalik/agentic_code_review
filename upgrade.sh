@@ -217,28 +217,90 @@ else
     exit 1
 fi
 
-# Update prompts (if available from repo)
+# Update all files from repository (including bug fixes)
 if [ -d "${SCRIPT_DIR}/.git" ]; then
-    echo -e "${YELLOW}⏳ Updating prompts from repository...${NC}"
-    
+    echo -e "${YELLOW}⏳ Updating all files from repository (includes bug fixes)...${NC}"
+
     # Save current directory
     CURRENT_DIR=$(pwd)
     cd "${SCRIPT_DIR}"
-    
-    # Stash any local changes
-    git stash push -m "Auto-stash before upgrade" > /dev/null 2>&1
-    
-    # Pull latest changes
-    if git pull origin main > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} Updated prompts from repository"
-    else
-        echo -e "${YELLOW}⚠️  Could not pull from repository (using existing prompts)${NC}"
+
+    # Stash any local changes to config.yaml only
+    if [ -f "config.yaml" ]; then
+        cp config.yaml config.yaml.tmp
     fi
-    
+
+    # Pull latest changes (gets review_local.py, prompts, schema, hooks)
+    if git pull origin main > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Updated from repository:"
+        echo -e "  ${GREEN}✓${NC} review_local.py (bug fixes)"
+        echo -e "  ${GREEN}✓${NC} prompts/system_prompt.txt"
+        echo -e "  ${GREEN}✓${NC} schema/review_schema.json"
+        echo -e "  ${GREEN}✓${NC} hooks/pre-push"
+
+        # Restore config.yaml if it was overwritten
+        if [ -f "config.yaml.tmp" ]; then
+            # Check if config was changed by pull
+            if ! diff -q config.yaml config.yaml.tmp > /dev/null 2>&1; then
+                echo -e "${YELLOW}⚠️  config.yaml was modified by git pull, restoring your version${NC}"
+                mv config.yaml.tmp config.yaml
+            else
+                rm config.yaml.tmp
+            fi
+        fi
+    else
+        echo -e "${YELLOW}⚠️  Could not pull from repository${NC}"
+        echo -e "${YELLOW}   Trying to download files directly...${NC}"
+
+        # Fallback: Download files directly via curl
+        REPO_URL="https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main"
+
+        if curl -sSL "${REPO_URL}/review_local.py" -o review_local.py; then
+            echo -e "${GREEN}✓${NC} Downloaded review_local.py"
+        else
+            echo -e "${RED}❌ Failed to download review_local.py${NC}"
+        fi
+
+        if curl -sSL "${REPO_URL}/prompts/system_prompt.txt" -o prompts/system_prompt.txt; then
+            echo -e "${GREEN}✓${NC} Downloaded system_prompt.txt"
+        else
+            echo -e "${YELLOW}⚠️  Failed to download system_prompt.txt${NC}"
+        fi
+
+        if curl -sSL "${REPO_URL}/schema/review_schema.json" -o schema/review_schema.json; then
+            echo -e "${GREEN}✓${NC} Downloaded review_schema.json"
+        else
+            echo -e "${YELLOW}⚠️  Failed to download review_schema.json${NC}"
+        fi
+    fi
+
+    # Clean up
+    [ -f "config.yaml.tmp" ] && rm config.yaml.tmp
+
     cd "$CURRENT_DIR"
 else
-    echo -e "${YELLOW}⚠️  Not a git repository, skipping prompt update${NC}"
-    echo -e "${YELLOW}   You may want to manually update prompts/system_prompt.txt${NC}"
+    echo -e "${YELLOW}⚠️  Not a git repository, downloading files directly...${NC}"
+
+    # Download files directly
+    REPO_URL="https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main"
+
+    if curl -sSL "${REPO_URL}/review_local.py" -o "${SCRIPT_DIR}/review_local.py"; then
+        echo -e "${GREEN}✓${NC} Downloaded review_local.py (latest bug fixes)"
+    else
+        echo -e "${RED}❌ Failed to download review_local.py${NC}"
+    fi
+
+    if curl -sSL "${REPO_URL}/prompts/system_prompt.txt" -o "${SCRIPT_DIR}/prompts/system_prompt.txt"; then
+        echo -e "${GREEN}✓${NC} Downloaded system_prompt.txt"
+    else
+        echo -e "${YELLOW}⚠️  Failed to download system_prompt.txt${NC}"
+    fi
+
+    if curl -sSL "${REPO_URL}/schema/review_schema.json" -o "${SCRIPT_DIR}/schema/review_schema.json"; then
+        echo -e "${GREEN}✓${NC} Downloaded review_schema.json"
+    else
+        echo -e "${YELLOW}⚠️  Failed to download schema${NC}"
+    fi
 fi
 
 echo ""

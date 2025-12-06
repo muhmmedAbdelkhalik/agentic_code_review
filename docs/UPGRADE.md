@@ -6,21 +6,56 @@ If you're using the old `gemma:2b` model, upgrade to `qwen2.5-coder:7b` for **4x
 
 ---
 
-## 🚀 Automatic Upgrade (Recommended)
+## 🚀 Quick Update (For Developers Who Already Installed)
 
-Run the automated upgrade script:
+**One command to update your Laravel project:**
 
 ```bash
-cd /path/to/agentic_code_review
-./upgrade.sh
+curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/review_local.py -o review_local.py && curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/prompts/system_prompt.txt -o prompts/system_prompt.txt && echo "✅ Updated successfully!"
+```
+
+Run this in your Laravel project directory where the agent is installed. Done!
+
+**What this updates:**
+- ✅ `review_local.py` (latest bug fixes)
+- ✅ `prompts/system_prompt.txt` (enhanced security detection)
+- ✅ Your `config.yaml` stays unchanged
+
+---
+
+## 🐛 Latest Fix: "File Too Large" Bug (Dec 2025)
+
+**Important:** If you're experiencing the "File too large for analysis" error for small files, you need this update!
+
+### What was fixed:
+- ❌ **Before**: Agent incorrectly returned "File too large for analysis" even for small files (32-36 lines)
+- ✅ **After**: Agent properly analyzes all files and focuses on critical security issues
+
+### How to get the fix:
+```bash
+# Copy-paste this in your project directory:
+curl -sSL https://raw.githubusercontent.com/muhmmedAbdelkhalik/agentic_code_review/main/review_local.py -o review_local.py
+```
+
+**No model re-download needed** - this is a prompt engineering fix only!
+
+---
+
+## 🚀 Full Upgrade (Recommended)
+
+**One command to upgrade everything:**
+
+```bash
+cd /path/to/agentic_code_review && git pull origin main && ./upgrade.sh
 ```
 
 **That's it!** The script will:
-- ✅ Check prerequisites (Ollama, Python)
-- ✅ Backup your current configuration
 - ✅ Download the new model (~4.7GB)
-- ✅ Update `config.yaml` automatically
-- ✅ Update prompts with security checklist
+- ✅ Update `review_local.py` (latest bug fixes)
+- ✅ Update `prompts/system_prompt.txt`
+- ✅ Update `schema/review_schema.json`
+- ✅ Update `config.yaml` to use new model
+- ✅ Backup your configuration
 - ✅ Verify everything works
 
 **Time required**: 5-15 minutes (mostly downloading the model)
