@@ -230,13 +230,19 @@ if [ -d "${SCRIPT_DIR}/.git" ]; then
         cp config.yaml config.yaml.tmp
     fi
 
-    # Pull latest changes (gets review_local.py, prompts, schema, hooks)
+    # Pull latest changes (gets review_local.py, prompts, schema, hooks, agent CLI)
     if git pull origin main > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Updated from repository:"
         echo -e "  ${GREEN}✓${NC} review_local.py (bug fixes)"
         echo -e "  ${GREEN}✓${NC} prompts/system_prompt.txt"
         echo -e "  ${GREEN}✓${NC} schema/review_schema.json"
         echo -e "  ${GREEN}✓${NC} hooks/pre-push"
+        echo -e "  ${GREEN}✓${NC} agent (CLI wrapper)"
+
+        # Make sure agent script is executable
+        if [ -f "agent" ]; then
+            chmod +x agent
+        fi
 
         # Restore config.yaml if it was overwritten
         if [ -f "config.yaml.tmp" ]; then
@@ -272,6 +278,13 @@ if [ -d "${SCRIPT_DIR}/.git" ]; then
         else
             echo -e "${YELLOW}⚠️  Failed to download review_schema.json${NC}"
         fi
+
+        if curl -sSL "${REPO_URL}/agent" -o agent; then
+            chmod +x agent
+            echo -e "${GREEN}✓${NC} Downloaded agent CLI wrapper"
+        else
+            echo -e "${YELLOW}⚠️  Failed to download agent${NC}"
+        fi
     fi
 
     # Clean up
@@ -300,6 +313,13 @@ else
         echo -e "${GREEN}✓${NC} Downloaded review_schema.json"
     else
         echo -e "${YELLOW}⚠️  Failed to download schema${NC}"
+    fi
+
+    if curl -sSL "${REPO_URL}/agent" -o "${SCRIPT_DIR}/agent"; then
+        chmod +x "${SCRIPT_DIR}/agent"
+        echo -e "${GREEN}✓${NC} Downloaded agent CLI wrapper"
+    else
+        echo -e "${YELLOW}⚠️  Failed to download agent${NC}"
     fi
 fi
 
@@ -367,6 +387,7 @@ REQUIRED_FILES=(
     "config.yaml"
     "prompts/system_prompt.txt"
     "schema/review_schema.json"
+    "agent"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
@@ -406,8 +427,11 @@ echo -e "${CYAN}═════════════════════�
 echo -e "${CYAN}🧪 Test Your Upgrade:${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "  # Test on your last commit"
-echo -e "  ${BLUE}python3 review_local.py --commit-range HEAD~1..HEAD${NC}"
+echo -e "  # Check system health (new feature!)"
+echo -e "  ${BLUE}./agent doctor${NC}"
+echo ""
+echo -e "  # Test review on your last commit"
+echo -e "  ${BLUE}./agent review --range HEAD~1..HEAD${NC}"
 echo ""
 echo -e "  # Or just push code (will auto-review)"
 echo -e "  ${BLUE}git push${NC}"
